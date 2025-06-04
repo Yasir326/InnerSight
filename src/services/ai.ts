@@ -186,12 +186,14 @@ export async function generateTitleFromEntry(entry: string): Promise<string> {
   return res.data.choices[0].message.content.trim();
 }
 
-export async function generateAlternativePerspective(entry: string): Promise<string> {
+export async function generateAlternativePerspective(
+  entry: string,
+): Promise<string> {
   // Load onboarding data to personalize the perspective
   const onboardingData = await getOnboardingData();
-  
+
   const personalContext = buildPersonalizedContext(onboardingData);
-  
+
   const prompt = `You are a wise, compassionate therapist. Read this journal entry and provide an alternative perspective that helps the person see their situation differently. Your response should:
 
 - Reframe challenges as opportunities for growth
@@ -233,18 +235,29 @@ Provide only the alternative perspective, no other text.`;
 }
 
 export interface AnalysisData {
-  themes: Array<{name: string; count: number}>;
+  themes: Array<{
+    name: string; 
+    count: number;
+    breakdown: string;
+    insights: string[];
+  }>;
   emotions: Array<{name: string; percentage: number}>;
   perspective: string;
 }
 
-export async function analyzeJournalEntryData(entry: string): Promise<AnalysisData> {
+export async function analyzeJournalEntryData(
+  entry: string,
+): Promise<AnalysisData> {
   const prompt = `Analyze this journal entry and return a JSON response with the following structure:
 
 {
   "themes": [
-    {"name": "Theme1", "count": 3},
-    {"name": "Theme2", "count": 2}
+    {
+      "name": "Theme1", 
+      "count": 3,
+      "breakdown": "A detailed explanation of how this theme appears in the entry",
+      "insights": ["Key insight 1", "Key insight 2", "Key insight 3"]
+    }
   ],
   "emotions": [
     {"name": "Emotion1", "percentage": 60},
@@ -256,6 +269,9 @@ export async function analyzeJournalEntryData(entry: string): Promise<AnalysisDa
 Guidelines:
 - Identify 2-4 main themes (topics like Work, Family, Health, Relationships, Self-Care, Growth, etc.)
 - Count should represent the relative importance/frequency of each theme (1-5 scale)
+- For each theme, provide:
+  * breakdown: 2-3 sentences explaining how this theme manifests in their entry
+  * insights: 2-4 specific observations, patterns, or reflections about this theme
 - Identify 2-4 main emotions with percentages that add up to 100
 - For perspective: Provide a compassionate, insightful alternative viewpoint that:
   * Reframes their situation in a more positive or balanced light
@@ -288,26 +304,52 @@ Journal entry:
     return analysisData;
   } catch (error) {
     console.error('Error parsing AI analysis response:', error);
-    
-    // Provide more realistic fallback data based on common journaling themes
+
     const fallbackThemes = [
-      {name: 'Self-Reflection', count: 4},
-      {name: 'Daily Life', count: 3},
-      {name: 'Emotions', count: 3},
-      {name: 'Relationships', count: 2},
+      {
+        name: 'Self-Reflection', 
+        count: 4,
+        breakdown: 'Your entry shows deep introspection and willingness to examine your thoughts and feelings.',
+        insights: [
+          'You demonstrate strong self-awareness',
+          'You\'re actively processing your experiences',
+          'You show courage in facing difficult emotions'
+        ]
+      },
+      {
+        name: 'Daily Life', 
+        count: 3,
+        breakdown: 'You\'re navigating the complexities of everyday experiences and finding meaning in routine moments.',
+        insights: [
+          'You notice details in your daily experiences',
+          'You seek meaning in ordinary moments',
+          'You\'re building awareness of life patterns'
+        ]
+      },
+      {
+        name: 'Emotions', 
+        count: 3,
+        breakdown: 'Your emotional landscape is rich and varied, showing both vulnerability and strength.',
+        insights: [
+          'You acknowledge your feelings honestly',
+          'You\'re developing emotional intelligence',
+          'You show resilience in processing emotions'
+        ]
+      },
     ];
-    
+
     const fallbackEmotions = [
       {name: 'Contemplative', percentage: 40},
       {name: 'Hopeful', percentage: 30},
       {name: 'Uncertain', percentage: 20},
       {name: 'Grateful', percentage: 10},
     ];
-    
+
     return {
       themes: fallbackThemes,
       emotions: fallbackEmotions,
-      perspective: 'Your willingness to write and reflect shows incredible self-awareness and courage. Sometimes the act of putting thoughts into words is itself a form of healing and growth.',
+      perspective:
+        'Your willingness to write and reflect shows incredible self-awareness and courage. Sometimes the act of putting thoughts into words is itself a form of healing and growth.',
     };
   }
 }

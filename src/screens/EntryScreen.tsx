@@ -23,6 +23,7 @@ import {
   saveJournalEntry,
   generateTitleFromContent,
 } from '../services/journalEntries';
+import Svg, {Path} from 'react-native-svg';
 
 interface ConversationEntry {
   id: string;
@@ -30,6 +31,15 @@ interface ConversationEntry {
   text: string;
   timestamp: Date;
 }
+
+const HomeIcon: React.FC<{size?: number; color?: string}> = ({
+  size = 24,
+  color = '#FFFFFF',
+}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+    <Path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+  </Svg>
+);
 
 export default function EntryScreen() {
   const [currentEntry, setCurrentEntry] = useState('');
@@ -41,10 +51,8 @@ export default function EntryScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
-  // track a debouncing timer
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Auto-scroll to bottom when new content is added
   useEffect(() => {
     if (scrollRef.current) {
       setTimeout(() => {
@@ -53,11 +61,9 @@ export default function EntryScreen() {
     }
   }, [conversation, loading]);
 
-  // Handle text input changes
   const handleTextChange = (text: string) => {
     setCurrentEntry(text);
 
-    // Clear any pending call
     clearTimeout(debounceRef.current!);
 
     if (!text.trim()) return;
@@ -67,11 +73,9 @@ export default function EntryScreen() {
     }, 5500);
   };
 
-  // Submit the current entry
   const handleSubmit = async () => {
     if (!currentEntry.trim()) return;
 
-    // Add user entry to conversation
     const userEntry: ConversationEntry = {
       id: Date.now().toString(),
       type: 'user',
@@ -79,13 +83,21 @@ export default function EntryScreen() {
       timestamp: new Date(),
     };
 
-    setConversation(prev => [...prev, userEntry]);
+    const updatedConversation = [...conversation, userEntry];
+    setConversation(updatedConversation);
+
+    // Build full context for AI (all user entries so far)
+    const fullContext = updatedConversation
+      .filter(entry => entry.type === 'user')
+      .map(entry => entry.text)
+      .join('\n\n');
+
     setCurrentEntry('');
     setLoading(true);
 
     try {
-      // Get AI response
-      const [err, result] = await safeAwait(analyseJournalEntry(currentEntry));
+      // Get AI response with full context
+      const [err, result] = await safeAwait(analyseJournalEntry(fullContext));
 
       if (err) {
         console.error(err);
@@ -271,6 +283,12 @@ export default function EntryScreen() {
           )}
         </TouchableOpacity>
       </View>
+      {/* Floating Home Button */}
+      <TouchableOpacity
+        style={styles.homeButton}
+        onPress={() => navigation.navigate('Home')}>
+        <HomeIcon size={24} color="#FFFFFF" />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -374,5 +392,24 @@ const styles = StyleSheet.create({
   },
   finishButtonTextDisabled: {
     color: '#BBBBBB',
+  },
+  homeButton: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    width: 56,
+    height: 56,
+    backgroundColor: '#000000',
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
 });

@@ -1,7 +1,7 @@
 # InnerSight
 
 <div align="center">
-  <img src="src/assets/png/logo-grayscale.png" alt="InnerSight Logo" width="200" height="200">
+  <img src="src/assets/png/logo-color-brain.png" alt="InnerSight Logo" width="200" height="200">
   
   **YOUR THOUGHTS. YOUR SPACE. NO ONE ELSE.**
   

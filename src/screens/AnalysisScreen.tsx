@@ -11,8 +11,9 @@ import {
   ScrollView,
   Platform,
   TouchableOpacity,
+  Modal,
 } from 'react-native';
-import Svg, {Circle, G, Text as SvgText} from 'react-native-svg';
+import Svg, {Circle, G, Text as SvgText, Path} from 'react-native-svg';
 import {pack, hierarchy} from 'd3-hierarchy';
 import {
   analyseJournalEntry,
@@ -31,6 +32,26 @@ const BUBBLE_SIZE = 300;
 
 type Theme = {name: string; count: number};
 
+// Custom Home Icon Component
+const HomeIcon: React.FC<{size?: number; color?: string}> = ({
+  size = 24,
+  color = '#FFFFFF',
+}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+    <Path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+  </Svg>
+);
+
+// Custom Journal Icon Component
+const JournalIcon: React.FC<{size?: number; color?: string}> = ({
+  size = 24,
+  color = '#FFFFFF',
+}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+    <Path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+  </Svg>
+);
+
 const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
   const {entryText, entryId, skipAI = false, entryTitle} = route.params;
 
@@ -48,6 +69,15 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
   // Alternative perspective
   const [alternativePerspective, setAlternativePerspective] =
     useState<string>('');
+
+  // Theme detail modal state
+  const [selectedTheme, setSelectedTheme] = useState<{
+    name: string;
+    count: number;
+    breakdown: string;
+    insights: string[];
+  } | null>(null);
+  const [showThemeModal, setShowThemeModal] = useState(false);
 
   // simple "progress" animation for your existing loader
   const progress = useRef(new Animated.Value(0)).current;
@@ -90,10 +120,46 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
             // Only use fallback if AI generation fails
             setAnalysisData({
               themes: [
-                {name: 'Self-Reflection', count: 4},
-                {name: 'Daily Life', count: 3},
-                {name: 'Emotions', count: 3},
-                {name: 'Relationships', count: 2},
+                {
+                  name: 'Self-Reflection', 
+                  count: 4,
+                  breakdown: 'Your entry shows deep introspection and willingness to examine your thoughts and feelings.',
+                  insights: [
+                    'You demonstrate strong self-awareness',
+                    'You\'re actively processing your experiences',
+                    'You show courage in facing difficult emotions'
+                  ]
+                },
+                {
+                  name: 'Daily Life', 
+                  count: 3,
+                  breakdown: 'You\'re navigating the complexities of everyday experiences and finding meaning in routine moments.',
+                  insights: [
+                    'You notice details in your daily experiences',
+                    'You seek meaning in ordinary moments',
+                    'You\'re building awareness of life patterns'
+                  ]
+                },
+                {
+                  name: 'Emotions', 
+                  count: 3,
+                  breakdown: 'Your emotional landscape is rich and varied, showing both vulnerability and strength.',
+                  insights: [
+                    'You acknowledge your feelings honestly',
+                    'You\'re developing emotional intelligence',
+                    'You show resilience in processing emotions'
+                  ]
+                },
+                {
+                  name: 'Relationships', 
+                  count: 2,
+                  breakdown: 'Your connections with others play an important role in your personal growth and well-being.',
+                  insights: [
+                    'You value meaningful connections',
+                    'You\'re learning about interpersonal dynamics',
+                    'You seek understanding in your relationships'
+                  ]
+                },
               ],
               emotions: [
                 {name: 'Contemplative', percentage: 40},
@@ -166,10 +232,46 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
         // Use fallback data only if AI generation fails
         setAnalysisData({
           themes: [
-            {name: 'Self-Reflection', count: 4},
-            {name: 'Daily Life', count: 3},
-            {name: 'Emotions', count: 3},
-            {name: 'Relationships', count: 2},
+            {
+              name: 'Self-Reflection', 
+              count: 4,
+              breakdown: 'Your entry shows deep introspection and willingness to examine your thoughts and feelings.',
+              insights: [
+                'You demonstrate strong self-awareness',
+                'You\'re actively processing your experiences',
+                'You show courage in facing difficult emotions'
+              ]
+            },
+            {
+              name: 'Daily Life', 
+              count: 3,
+              breakdown: 'You\'re navigating the complexities of everyday experiences and finding meaning in routine moments.',
+              insights: [
+                'You notice details in your daily experiences',
+                'You seek meaning in ordinary moments',
+                'You\'re building awareness of life patterns'
+              ]
+            },
+            {
+              name: 'Emotions', 
+              count: 3,
+              breakdown: 'Your emotional landscape is rich and varied, showing both vulnerability and strength.',
+              insights: [
+                'You acknowledge your feelings honestly',
+                'You\'re developing emotional intelligence',
+                'You show resilience in processing emotions'
+              ]
+            },
+            {
+              name: 'Relationships', 
+              count: 2,
+              breakdown: 'Your connections with others play an important role in your personal growth and well-being.',
+              insights: [
+                'You value meaningful connections',
+                'You\'re learning about interpersonal dynamics',
+                'You seek understanding in your relationships'
+              ]
+            },
           ],
           emotions: [
             {name: 'Contemplative', percentage: 40},
@@ -306,19 +408,24 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
     return name.substring(0, maxLength - 1) + '…';
   };
 
+  // Helper function to handle theme bubble press
+  const handleThemePress = (theme: {name: string; count: number; breakdown: string; insights: string[]}) => {
+    setSelectedTheme(theme);
+    setShowThemeModal(true);
+  };
+
+  // Helper function to close theme modal
+  const closeThemeModal = () => {
+    setShowThemeModal(false);
+    setSelectedTheme(null);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>
           {entryTitle ? `Analysis: ${entryTitle}` : 'Analysis'}
         </Text>
-        {entryId && (
-          <TouchableOpacity
-            style={styles.viewEntryButton}
-            onPress={() => navigation.navigate('EntryDetail', {entryId})}>
-            <Text style={styles.viewEntryButtonText}>View Entry</Text>
-          </TouchableOpacity>
-        )}
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
@@ -347,6 +454,7 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
           <>
             <View style={styles.sectionContainer}>
               <Text style={styles.sectionTitle}>Themes</Text>
+              <Text style={styles.sectionSubtitle}>Tap a bubble to explore</Text>
               <View style={styles.bubbleChartContainer}>
                 <Svg width={BUBBLE_SIZE} height={BUBBLE_SIZE}>
                   <G>
@@ -358,6 +466,7 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
                           r={node.r}
                           fill="#000000"
                           opacity={0.8}
+                          onPress={() => handleThemePress(node.data as any)}
                         />
                         <SvgText
                           x={node.x}
@@ -366,7 +475,8 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
                           fill="#FFFFFF"
                           fontWeight="bold"
                           textAnchor="middle"
-                          alignmentBaseline="middle">
+                          alignmentBaseline="middle"
+                          onPress={() => handleThemePress(node.data as any)}>
                           {truncateThemeName((node.data as any).name)}
                         </SvgText>
                       </React.Fragment>
@@ -430,6 +540,78 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
           </>
         )}
       </ScrollView>
+
+      {/* Theme Detail Modal */}
+      <Modal
+        visible={showThemeModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={closeThemeModal}>
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>
+              {selectedTheme?.name}
+            </Text>
+            <TouchableOpacity
+              style={styles.modalCloseButton}
+              onPress={closeThemeModal}>
+              <Text style={styles.modalCloseText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <ScrollView style={styles.modalContent}>
+            {selectedTheme && (
+              <>
+                <View style={styles.modalSection}>
+                  <Text style={styles.modalSectionTitle}>Overview</Text>
+                  <Text style={styles.modalBreakdown}>
+                    {selectedTheme.breakdown}
+                  </Text>
+                </View>
+
+                <View style={styles.modalSection}>
+                  <Text style={styles.modalSectionTitle}>Key Insights</Text>
+                  {selectedTheme.insights.map((insight, index) => (
+                    <View key={index} style={styles.insightItem}>
+                      <View style={styles.insightBullet} />
+                      <Text style={styles.insightText}>{insight}</Text>
+                    </View>
+                  ))}
+                </View>
+
+                <View style={styles.modalSection}>
+                  <Text style={styles.modalSectionTitle}>Reflection Questions</Text>
+                  <View style={styles.reflectionCard}>
+                    <Text style={styles.reflectionText}>
+                      How does this theme show up in other areas of your life?
+                    </Text>
+                  </View>
+                  <View style={styles.reflectionCard}>
+                    <Text style={styles.reflectionText}>
+                      What patterns do you notice around {selectedTheme.name.toLowerCase()}?
+                    </Text>
+                  </View>
+                </View>
+              </>
+            )}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* Floating Home Button */}
+      <TouchableOpacity
+        style={styles.homeButton}
+        onPress={() => navigation.navigate('Home')}>
+        <HomeIcon size={24} color="#FFFFFF" />
+      </TouchableOpacity>
+      {/* Floating Journal Button */}
+      {entryId && (
+        <TouchableOpacity
+          style={styles.journalButton}
+          onPress={() => navigation.navigate('EntryDetail', {entryId})}>
+          <JournalIcon size={24} color="#FFFFFF" />
+        </TouchableOpacity>
+      )}
     </SafeAreaView>
   );
 };
@@ -501,6 +683,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#000000',
     marginBottom: 16,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    color: '#888888',
+    marginBottom: 12,
     fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
   bubbleChartContainer: {
@@ -598,6 +786,129 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#FFFFFF',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+  },
+  homeButton: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    width: 56,
+    height: 56,
+    backgroundColor: '#000000',
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+
+  journalButton: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    width: 56,
+    height: 56,
+    backgroundColor: '#000000',
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#000000',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+  },
+  modalCloseButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#000000',
+    borderRadius: 20,
+  },
+  modalCloseText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+  },
+  modalContent: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  modalSection: {
+    marginVertical: 20,
+  },
+  modalSectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 12,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+  },
+  modalBreakdown: {
+    fontSize: 16,
+    lineHeight: 24,
+    color: '#333333',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+  },
+  insightItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  insightBullet: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#000000',
+    marginTop: 8,
+    marginRight: 12,
+  },
+  insightText: {
+    flex: 1,
+    fontSize: 15,
+    lineHeight: 22,
+    color: '#333333',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+  },
+  reflectionCard: {
+    backgroundColor: '#F5F5F7',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  reflectionText: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: '#000000',
+    fontStyle: 'italic',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
 });

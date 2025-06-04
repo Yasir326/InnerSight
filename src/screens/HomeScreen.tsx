@@ -32,6 +32,16 @@ const TrashIcon: React.FC<{size?: number; color?: string}> = ({
   </Svg>
 );
 
+
+const PlusIcon: React.FC<{size?: number; color?: string}> = ({
+  size = 24,
+  color = '#FFFFFF',
+}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+    <Path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/>
+  </Svg>
+);
+
 const HomeScreen: React.FC = () => {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -194,7 +204,7 @@ const HomeScreen: React.FC = () => {
         <TouchableOpacity
           style={styles.newEntryButton}
           onPress={() => navigation.navigate('Entry')}>
-          <Text style={styles.newEntryButtonText}>New Entry</Text>
+          <PlusIcon size={28} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -302,24 +312,26 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
   footer: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingBottom: Platform.OS === 'ios' ? 34 : 16,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-    backgroundColor: '#FFFFFF',
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    zIndex: 1,
   },
   newEntryButton: {
     backgroundColor: '#000000',
-    paddingVertical: 16,
-    borderRadius: 12,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
-  },
-  newEntryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '600',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
 });
 

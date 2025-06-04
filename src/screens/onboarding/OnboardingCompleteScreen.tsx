@@ -48,8 +48,6 @@ const OnboardingCompleteScreen: React.FC<Props> = ({navigation}) => {
   }, [fadeAnim, scaleAnim, slideAnim ]);
 
   const handleStartJourney = () => {
-    // Here you would typically save onboarding completion status
-    // and navigate to the main app
     navigation.reset({
       index: 0,
       routes: [{name: 'Home'}],
