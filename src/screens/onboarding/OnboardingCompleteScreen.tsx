@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../../navigation/AppNavigator';
+import {storage} from '../../services/storage';
 
 type Props = {
   navigation: NativeStackNavigationProp<
@@ -47,11 +48,24 @@ const OnboardingCompleteScreen: React.FC<Props> = ({navigation}) => {
     ]).start();
   }, [fadeAnim, scaleAnim, slideAnim ]);
 
-  const handleStartJourney = () => {
-    navigation.reset({
-      index: 0,
-      routes: [{name: 'Home'}],
-    });
+  const handleStartJourney = async () => {
+    try {
+      // Mark onboarding as complete
+      await storage.setOnboardingComplete();
+
+      // Navigate to home and reset navigation stack
+      navigation.reset({
+        index: 0,
+        routes: [{name: 'Home'}],
+      });
+    } catch (error) {
+      console.error('Error completing onboarding:', error);
+      // Still navigate to home even if saving fails
+      navigation.reset({
+        index: 0,
+        routes: [{name: 'Home'}],
+      });
+    }
   };
 
   return (

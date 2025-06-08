@@ -13,6 +13,8 @@ import {
 } from 'react-native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../../navigation/AppNavigator';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {safeAwait} from '../../utils/safeAwait';
 
 type Props = {
   navigation: NativeStackNavigationProp<
@@ -48,8 +50,23 @@ const OnboardingReflectionScreen: React.FC<Props> = ({navigation}) => {
     currentQuestionIndex === reflectionQuestions.length - 1;
   const canContinue = answers[currentQuestion.id]?.trim().length > 0;
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (isLastQuestion) {
+      // Save reflection answers to AsyncStorage before completing
+      const reflectionData = {
+        current_state: answers.current_state || '',
+        ideal_self: answers.ideal_self || '',
+        biggest_obstacle: answers.biggest_obstacle || '',
+      };
+      
+      const [error] = await safeAwait(
+        AsyncStorage.setItem('@journal_onboarding_reflections', JSON.stringify(reflectionData))
+      );
+      
+      if (error) {
+        console.error('Error saving reflections:', error);
+      }
+      
       navigation.navigate('OnboardingComplete');
     } else {
       setCurrentQuestionIndex(prev => prev + 1);

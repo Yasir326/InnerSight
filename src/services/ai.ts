@@ -236,7 +236,7 @@ Provide only the alternative perspective, no other text.`;
 
 export interface AnalysisData {
   themes: Array<{
-    name: string; 
+    name: string;
     count: number;
     breakdown: string;
     insights: string[];
@@ -307,34 +307,37 @@ Journal entry:
 
     const fallbackThemes = [
       {
-        name: 'Self-Reflection', 
+        name: 'Self-Reflection',
         count: 4,
-        breakdown: 'Your entry shows deep introspection and willingness to examine your thoughts and feelings.',
+        breakdown:
+          'Your entry shows deep introspection and willingness to examine your thoughts and feelings.',
         insights: [
           'You demonstrate strong self-awareness',
-          'You\'re actively processing your experiences',
-          'You show courage in facing difficult emotions'
-        ]
+          "You're actively processing your experiences",
+          'You show courage in facing difficult emotions',
+        ],
       },
       {
-        name: 'Daily Life', 
+        name: 'Daily Life',
         count: 3,
-        breakdown: 'You\'re navigating the complexities of everyday experiences and finding meaning in routine moments.',
+        breakdown:
+          "You're navigating the complexities of everyday experiences and finding meaning in routine moments.",
         insights: [
           'You notice details in your daily experiences',
           'You seek meaning in ordinary moments',
-          'You\'re building awareness of life patterns'
-        ]
+          "You're building awareness of life patterns",
+        ],
       },
       {
-        name: 'Emotions', 
+        name: 'Emotions',
         count: 3,
-        breakdown: 'Your emotional landscape is rich and varied, showing both vulnerability and strength.',
+        breakdown:
+          'Your emotional landscape is rich and varied, showing both vulnerability and strength.',
         insights: [
           'You acknowledge your feelings honestly',
-          'You\'re developing emotional intelligence',
-          'You show resilience in processing emotions'
-        ]
+          "You're developing emotional intelligence",
+          'You show resilience in processing emotions',
+        ],
       },
     ];
 

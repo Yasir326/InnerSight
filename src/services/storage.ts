@@ -20,6 +20,7 @@ export interface JournalStats {
 const STORAGE_KEYS = {
   ENTRIES: '@InnerSight:entries',
   STATS: '@InnerSight:stats',
+  ONBOARDING_COMPLETE: '@InnerSight:onboarding_complete',
 };
 
 export const storage = {
@@ -125,6 +126,38 @@ export const storage = {
     );
     if (error) {
       console.error('Error updating stats:', error);
+      throw error;
+    }
+  },
+
+  // Onboarding
+  async isOnboardingComplete(): Promise<boolean> {
+    const [error, complete] = await safeAwait(
+      AsyncStorage.getItem(STORAGE_KEYS.ONBOARDING_COMPLETE),
+    );
+    if (error) {
+      console.error('Error checking onboarding status:', error);
+      return false;
+    }
+    return complete === 'true';
+  },
+
+  async setOnboardingComplete(): Promise<void> {
+    const [error] = await safeAwait(
+      AsyncStorage.setItem(STORAGE_KEYS.ONBOARDING_COMPLETE, 'true'),
+    );
+    if (error) {
+      console.error('Error setting onboarding complete:', error);
+      throw error;
+    }
+  },
+
+  async resetOnboarding(): Promise<void> {
+    const [error] = await safeAwait(
+      AsyncStorage.removeItem(STORAGE_KEYS.ONBOARDING_COMPLETE),
+    );
+    if (error) {
+      console.error('Error resetting onboarding:', error);
       throw error;
     }
   },

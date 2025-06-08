@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../../navigation/AppNavigator';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {safeAwait} from '../../utils/safeAwait';
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'OnboardingGoals'>;
@@ -75,6 +77,21 @@ const OnboardingGoalsScreen: React.FC<Props> = ({navigation}) => {
 
   const canContinue = selectedGoals.length > 0;
 
+  const handleContinue = async () => {
+    if (canContinue) {
+      // Save selected goals to AsyncStorage
+      const [error] = await safeAwait(
+        AsyncStorage.setItem('@journal_onboarding_goals', JSON.stringify(selectedGoals))
+      );
+      
+      if (error) {
+        console.error('Error saving goals:', error);
+      }
+      
+      navigation.navigate('OnboardingChallenges');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
@@ -132,9 +149,7 @@ const OnboardingGoalsScreen: React.FC<Props> = ({navigation}) => {
       <View style={styles.footer}>
         <TouchableOpacity
           style={[styles.button, !canContinue && styles.buttonDisabled]}
-          onPress={() =>
-            canContinue && navigation.navigate('OnboardingChallenges')
-          }
+          onPress={handleContinue}
           disabled={!canContinue}>
           <Text
             style={[

@@ -1,4 +1,5 @@
 import type React from 'react';
+import {useState, useEffect} from 'react';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 
@@ -18,6 +19,9 @@ import AnalysisScreen from '../screens/AnalysisScreen';
 import StatsScreen from '../screens/StatsScreen';
 import ResultsScreen from '../screens/ResultsScreen';
 
+// Services
+import {storage} from '../services/storage';
+
 export type RootStackParamList = {
   // Onboarding
   Welcome: undefined;
@@ -32,7 +36,7 @@ export type RootStackParamList = {
   Entry: undefined;
   EntryDetail: {entryId: string};
   Analysis: {
-    entryText: string; 
+    entryText: string;
     entryId?: string;
     skipAI?: boolean; // Flag to skip AI analysis when coming from existing entry
     entryTitle?: string; // Include entry title for display
@@ -44,12 +48,32 @@ export type RootStackParamList = {
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const AppNavigator: React.FC = () => {
-  const isOnboardingComplete = true; // TODO should come from app state/storage
+  const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const checkOnboardingStatus = async () => {
+      try {
+        const complete = await storage.isOnboardingComplete();
+        setOnboardingComplete(complete);
+      } catch (error) {
+        console.error('Error checking onboarding status:', error);
+        // Default to showing onboarding if there's an error
+        setOnboardingComplete(false);
+      }
+    };
+
+    checkOnboardingStatus();
+  }, []);
+
+  // Show loading state while checking onboarding status
+  if (onboardingComplete === null) {
+    return null; // You could show a loading screen here if desired
+  }
 
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName={isOnboardingComplete ? 'Home' : 'Welcome'}
+        initialRouteName={onboardingComplete ? 'Home' : 'Welcome'}
         screenOptions={{
           headerShown: false,
           gestureEnabled: false, // Disable swipe back during onboarding

@@ -11,7 +11,7 @@
 		4E3D7A0B7C1A2A0CEC8977F8 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
-		B37D932820B84FE88A10AC54 /* libPods-InnerSight.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A0DC8C51563B10FC46F772B8 /* libPods-InnerSight.a */; };
+		E6869A47348BAFF7C1ACF9CC /* Pods_InnerSight.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D2B2C2ACA2F03FF1E9353B2B /* Pods_InnerSight.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -19,12 +19,12 @@
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = InnerSight/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = InnerSight/Info.plist; sourceTree = "<group>"; };
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = InnerSight/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		256612AB36A023DDE7B62812 /* Pods-InnerSight.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-InnerSight.debug.xcconfig"; path = "Target Support Files/Pods-InnerSight/Pods-InnerSight.debug.xcconfig"; sourceTree = "<group>"; };
+		30559159EB271D06AF787418 /* Pods-InnerSight.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-InnerSight.release.xcconfig"; path = "Target Support Files/Pods-InnerSight/Pods-InnerSight.release.xcconfig"; sourceTree = "<group>"; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = InnerSight/AppDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = InnerSight/LaunchScreen.storyboard; sourceTree = "<group>"; };
-		A0DC8C51563B10FC46F772B8 /* libPods-InnerSight.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-InnerSight.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		A43B5D989D291F201E77D671 /* Pods-InnerSight.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-InnerSight.release.xcconfig"; path = "Target Support Files/Pods-InnerSight/Pods-InnerSight.release.xcconfig"; sourceTree = "<group>"; };
+		D2B2C2ACA2F03FF1E9353B2B /* Pods_InnerSight.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_InnerSight.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		FDA16202F5E502B820710478 /* Pods-InnerSight.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-InnerSight.debug.xcconfig"; path = "Target Support Files/Pods-InnerSight/Pods-InnerSight.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -32,7 +32,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B37D932820B84FE88A10AC54 /* libPods-InnerSight.a in Frameworks */,
+				E6869A47348BAFF7C1ACF9CC /* Pods_InnerSight.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -55,7 +55,7 @@
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				A0DC8C51563B10FC46F772B8 /* libPods-InnerSight.a */,
+				D2B2C2ACA2F03FF1E9353B2B /* Pods_InnerSight.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -92,8 +92,8 @@
 		BBD78D7AC51CEA395F1C20DB /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				256612AB36A023DDE7B62812 /* Pods-InnerSight.debug.xcconfig */,
-				A43B5D989D291F201E77D671 /* Pods-InnerSight.release.xcconfig */,
+				FDA16202F5E502B820710478 /* Pods-InnerSight.debug.xcconfig */,
+				30559159EB271D06AF787418 /* Pods-InnerSight.release.xcconfig */,
 			);
 			path = Pods;
 			sourceTree = "<group>";
@@ -105,13 +105,11 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "InnerSight" */;
 			buildPhases = (
-				3D861FEB348791BA84996595 /* [CP] Check Pods Manifest.lock */,
+				871DC60D7C9B15C4C0E6437F /* [CP] Check Pods Manifest.lock */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
-				33BA1F2362542F87B9145D29 /* [CP] Embed Pods Frameworks */,
-				310C284F4514DDA99C7563CF /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -183,41 +181,7 @@
 			shellPath = /bin/sh;
 			shellScript = "set -e\n\nWITH_ENVIRONMENT=\"$REACT_NATIVE_PATH/scripts/xcode/with-environment.sh\"\nREACT_NATIVE_XCODE=\"$REACT_NATIVE_PATH/scripts/react-native-xcode.sh\"\n\n/bin/sh -c \"$WITH_ENVIRONMENT $REACT_NATIVE_XCODE\"\n";
 		};
-		310C284F4514DDA99C7563CF /* [CP] Copy Pods Resources */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-InnerSight/Pods-InnerSight-resources-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			name = "[CP] Copy Pods Resources";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-InnerSight/Pods-InnerSight-resources-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-InnerSight/Pods-InnerSight-resources.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		33BA1F2362542F87B9145D29 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-InnerSight/Pods-InnerSight-frameworks-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-InnerSight/Pods-InnerSight-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-InnerSight/Pods-InnerSight-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		3D861FEB348791BA84996595 /* [CP] Check Pods Manifest.lock */ = {
+		871DC60D7C9B15C4C0E6437F /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -255,14 +219,15 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 256612AB36A023DDE7B62812 /* Pods-InnerSight.debug.xcconfig */;
+			baseConfigurationReference = FDA16202F5E502B820710478 /* Pods-InnerSight.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5Y258J337R;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = InnerSight/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -273,7 +238,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.yasirkhan.InnerSight;
 				PRODUCT_NAME = InnerSight;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -283,13 +248,14 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = A43B5D989D291F201E77D671 /* Pods-InnerSight.release.xcconfig */;
+			baseConfigurationReference = 30559159EB271D06AF787418 /* Pods-InnerSight.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5Y258J337R;
 				INFOPLIST_FILE = InnerSight/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -300,7 +266,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.yasirkhan.InnerSight;
 				PRODUCT_NAME = InnerSight;
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";

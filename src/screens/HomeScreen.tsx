@@ -21,6 +21,7 @@ import {useNavigation, useFocusEffect} from '@react-navigation/native';
 import {getJournalEntries, deleteJournalEntry, type JournalEntry} from '../services/journalEntries';
 import {safeAwait} from '../utils/safeAwait';
 import {getUserName} from '../services/onboarding';
+import {storage} from '../services/storage';
 
 // Custom Trash Icon Component
 const TrashIcon: React.FC<{size?: number; color?: string}> = ({
@@ -136,6 +137,36 @@ const HomeScreen: React.FC = () => {
     );
   };
 
+  const handleResetOnboarding = () => {
+    Alert.alert(
+      'Reset Onboarding',
+      'This will reset the onboarding flow. The app will restart and show the welcome screen again. This is for testing purposes only.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await storage.resetOnboarding();
+              // Force app to restart by navigating to Welcome
+              navigation.reset({
+                index: 0,
+                routes: [{name: 'Welcome'}],
+              });
+            } catch (error) {
+              console.error('Error resetting onboarding:', error);
+              Alert.alert('Error', 'Failed to reset onboarding');
+            }
+          },
+        },
+      ],
+    );
+  };
+
   const renderEntryItem = ({item}: {item: JournalEntry}) => (
     <View style={styles.entryCard}>
       <TouchableOpacity
@@ -178,7 +209,12 @@ const HomeScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.welcomeMessage}>{getWelcomeMessage()}</Text>
+        <TouchableOpacity
+          onLongPress={handleResetOnboarding}
+          delayLongPress={2000}
+          activeOpacity={1}>
+          <Text style={styles.welcomeMessage}>{getWelcomeMessage()}</Text>
+        </TouchableOpacity>
       </View>
 
       {loading ? (

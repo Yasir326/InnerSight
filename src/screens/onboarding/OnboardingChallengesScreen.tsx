@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../../navigation/AppNavigator';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {safeAwait} from '../../utils/safeAwait';
 
 type Props = {
   navigation: NativeStackNavigationProp<
@@ -90,6 +92,21 @@ const OnboardingChallengesScreen: React.FC<Props> = ({navigation}) => {
 
   const canContinue = selectedChallenges.length > 0;
 
+  const handleContinue = async () => {
+    if (canContinue) {
+      // Save selected challenges to AsyncStorage
+      const [error] = await safeAwait(
+        AsyncStorage.setItem('@journal_onboarding_challenges', JSON.stringify(selectedChallenges))
+      );
+      
+      if (error) {
+        console.error('Error saving challenges:', error);
+      }
+      
+      navigation.navigate('OnboardingReflection');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
@@ -149,9 +166,7 @@ const OnboardingChallengesScreen: React.FC<Props> = ({navigation}) => {
       <View style={styles.footer}>
         <TouchableOpacity
           style={[styles.button, !canContinue && styles.buttonDisabled]}
-          onPress={() =>
-            canContinue && navigation.navigate('OnboardingReflection')
-          }
+          onPress={handleContinue}
           disabled={!canContinue}>
           <Text
             style={[
