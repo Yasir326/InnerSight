@@ -1,6 +1,7 @@
 import axios from 'axios';
 import {getOnboardingData, OnboardingData} from './onboarding';
 import {OPENAI_API_KEY} from '@env';
+import {safeAwait} from '../utils/safeAwait';
 
 const buildPersonalizedContext = (
   onboardingData: OnboardingData | null,
@@ -129,10 +130,14 @@ const generatePersonalizedGuidance = (
 
 export async function analyseJournalEntry(entry: string): Promise<string> {
   // Load onboarding data to personalize the response
-  const onboardingData = await getOnboardingData();
+  const [onboardingError, onboardingData] = await safeAwait(getOnboardingData());
+  
+  if (onboardingError) {
+    console.warn('Failed to load onboarding data:', onboardingError);
+  }
 
-  const personalContext = buildPersonalizedContext(onboardingData);
-  const personalGuidance = generatePersonalizedGuidance(onboardingData);
+  const personalContext = buildPersonalizedContext(onboardingData || null);
+  const personalGuidance = generatePersonalizedGuidance(onboardingData || null);
 
   const prompt = `You are a calm, thoughtful psychiatrist. When I share a journal entry, reply in just 1–2 short lines:  
   – Acknowledge my feeling.  
@@ -144,20 +149,27 @@ export async function analyseJournalEntry(entry: string): Promise<string> {
   Here's my entry:
   "${entry}"`;
 
-  const res = await axios.post(
-    'https://api.openai.com/v1/chat/completions',
-    {
-      model: 'gpt-4o',
-      stream: false,
-      messages: [{role: 'user', content: prompt}],
-    },
-    {
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+  const [error, res] = await safeAwait(
+    axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: 'gpt-4o',
+        stream: false,
+        messages: [{role: 'user', content: prompt}],
       },
-    },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${OPENAI_API_KEY}`,
+        },
+      },
+    )
   );
+
+  if (error) {
+    console.error('Error analyzing journal entry:', error);
+    return "I'm here to listen and support you. Sometimes it helps to simply acknowledge what you're feeling right now. What stands out most to you about this moment?";
+  }
 
   return res.data.choices[0].message.content.trim();
 }
@@ -168,20 +180,29 @@ export async function generateTitleFromEntry(entry: string): Promise<string> {
   Journal entry:
   "${entry}"`;
 
-  const res = await axios.post(
-    'https://api.openai.com/v1/chat/completions',
-    {
-      model: 'gpt-4o',
-      stream: false,
-      messages: [{role: 'user', content: prompt}],
-    },
-    {
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+  const [error, res] = await safeAwait(
+    axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: 'gpt-4o',
+        stream: false,
+        messages: [{role: 'user', content: prompt}],
       },
-    },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${OPENAI_API_KEY}`,
+        },
+      },
+    )
   );
+
+  if (error) {
+    console.error('Error generating title:', error);
+    // Return a fallback title based on current date
+    const now = new Date();
+    return `Journal Entry - ${now.toLocaleDateString()}`;
+  }
 
   return res.data.choices[0].message.content.trim();
 }
@@ -190,9 +211,13 @@ export async function generateAlternativePerspective(
   entry: string,
 ): Promise<string> {
   // Load onboarding data to personalize the perspective
-  const onboardingData = await getOnboardingData();
+  const [onboardingError, onboardingData] = await safeAwait(getOnboardingData());
+  
+  if (onboardingError) {
+    console.warn('Failed to load onboarding data:', onboardingError);
+  }
 
-  const personalContext = buildPersonalizedContext(onboardingData);
+  const personalContext = buildPersonalizedContext(onboardingData || null);
 
   const prompt = `You are a wise, compassionate therapist. Read this journal entry and provide an alternative perspective that helps the person see their situation differently. Your response should:
 
@@ -216,20 +241,27 @@ Journal entry:
 
 Provide only the alternative perspective, no other text.`;
 
-  const res = await axios.post(
-    'https://api.openai.com/v1/chat/completions',
-    {
-      model: 'gpt-4o',
-      stream: false,
-      messages: [{role: 'user', content: prompt}],
-    },
-    {
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+  const [error, res] = await safeAwait(
+    axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: 'gpt-4o',
+        stream: false,
+        messages: [{role: 'user', content: prompt}],
       },
-    },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${OPENAI_API_KEY}`,
+        },
+      },
+    )
   );
+
+  if (error) {
+    console.error('Error generating alternative perspective:', error);
+    return "Every experience, even difficult ones, offers opportunities for growth and self-understanding. Your willingness to reflect and seek different perspectives shows remarkable strength and wisdom. Consider how this moment might be teaching you something valuable about yourself or your resilience.";
+  }
 
   return res.data.choices[0].message.content.trim();
 }
@@ -284,26 +316,78 @@ Guidelines:
 Journal entry:
 "${entry}"`;
 
-  const res = await axios.post(
-    'https://api.openai.com/v1/chat/completions',
-    {
-      model: 'gpt-4o',
-      stream: false,
-      messages: [{role: 'user', content: prompt}],
-    },
-    {
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+  const [error, res] = await safeAwait(
+    axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: 'gpt-4o',
+        stream: false,
+        messages: [{role: 'user', content: prompt}],
       },
-    },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${OPENAI_API_KEY}`,
+        },
+      },
+    )
   );
+
+  if (error) {
+    console.error('Error analyzing journal entry data:', error);
+    // Return fallback data
+    return {
+      themes: [
+        {
+          name: 'Self-Reflection',
+          count: 4,
+          breakdown:
+            'Your entry shows deep introspection and willingness to examine your thoughts and feelings.',
+          insights: [
+            'You demonstrate strong self-awareness',
+            "You're actively processing your experiences",
+            'You show courage in facing difficult emotions',
+          ],
+        },
+        {
+          name: 'Daily Life',
+          count: 3,
+          breakdown:
+            "You're navigating the complexities of everyday experiences and finding meaning in routine moments.",
+          insights: [
+            'You notice details in your daily experiences',
+            'You seek meaning in ordinary moments',
+            "You're building awareness of life patterns",
+          ],
+        },
+        {
+          name: 'Emotions',
+          count: 3,
+          breakdown:
+            'Your emotional landscape is rich and varied, showing both vulnerability and strength.',
+          insights: [
+            'You acknowledge your feelings honestly',
+            "You're developing emotional intelligence",
+            'You show resilience in processing emotions',
+          ],
+        },
+      ],
+      emotions: [
+        {name: 'Contemplative', percentage: 40},
+        {name: 'Hopeful', percentage: 30},
+        {name: 'Uncertain', percentage: 20},
+        {name: 'Grateful', percentage: 10},
+      ],
+      perspective:
+        'Your willingness to write and reflect shows incredible self-awareness and courage. Sometimes the act of putting thoughts into words is itself a form of healing and growth.',
+    };
+  }
 
   try {
     const analysisData = JSON.parse(res.data.choices[0].message.content.trim());
     return analysisData;
-  } catch (error) {
-    console.error('Error parsing AI analysis response:', error);
+  } catch (parseError) {
+    console.error('Error parsing AI analysis response:', parseError);
 
     const fallbackThemes = [
       {

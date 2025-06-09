@@ -41,6 +41,15 @@ const HomeIcon: React.FC<{size?: number; color?: string}> = ({
   </Svg>
 );
 
+const FinishIcon: React.FC<{size?: number; color?: string}> = ({
+  size = 24,
+  color = '#FFFFFF',
+}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+    <Path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+  </Svg>
+);
+
 export default function EntryScreen() {
   const [currentEntry, setCurrentEntry] = useState('');
   const [conversation, setConversation] = useState<ConversationEntry[]>([]);
@@ -262,27 +271,23 @@ export default function EntryScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <View style={styles.footer}>
+      {/* Floating Finish Entry Button */}
+      {conversation.length > 0 && (
         <TouchableOpacity
           style={[
             styles.finishButton,
-            conversation.length === 0 && styles.finishButtonDisabled,
+            saving && styles.finishButtonDisabled,
           ]}
           onPress={handleFinishEntry}
-          disabled={conversation.length === 0 || saving}>
+          disabled={saving}>
           {saving ? (
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
-            <Text
-              style={[
-                styles.finishButtonText,
-                conversation.length === 0 && styles.finishButtonTextDisabled,
-              ]}>
-              Finish Entry
-            </Text>
+            <FinishIcon size={24} color="#FFFFFF" />
           )}
         </TouchableOpacity>
-      </View>
+      )}
+
       {/* Floating Home Button */}
       <TouchableOpacity
         style={styles.homeButton}
@@ -367,31 +372,27 @@ const styles = StyleSheet.create({
   spacer: {
     height: 100,
   },
-  footer: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingBottom: Platform.OS === 'ios' ? 34 : 16,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-    backgroundColor: '#FFFFFF',
-  },
   finishButton: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    width: 56,
+    height: 56,
     backgroundColor: '#000000',
-    paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: 28,
     alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   finishButtonDisabled: {
-    backgroundColor: '#F0F0F0',
-  },
-  finishButtonText: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '600',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
-  },
-  finishButtonTextDisabled: {
-    color: '#BBBBBB',
+    backgroundColor: '#CCCCCC',
   },
   homeButton: {
     position: 'absolute',
