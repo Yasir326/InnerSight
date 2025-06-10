@@ -1,7 +1,40 @@
 import axios from 'axios';
 import {getOnboardingData, OnboardingData} from './onboarding';
-import {OPENAI_API_KEY} from '@env';
+import {OPENAI_API_KEY, DEEPSEEK_API_KEY} from '@env';
 import {safeAwait} from '../utils/safeAwait';
+
+interface AIProviderConfig {
+  baseURL: string;
+  model: string;
+  headers: {
+    'Content-Type': string;
+    Authorization: string;
+  };
+}
+
+const AI_CONFIG = {
+  provider: 'deepseek' as 'openai' | 'deepseek',
+  openai: {
+    baseURL: 'https://api.openai.com/v1/chat/completions',
+    model: 'gpt-4o',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${OPENAI_API_KEY}`,
+    },
+  },
+  deepseek: {
+    baseURL: 'https://api.deepseek.com/v1/chat/completions',
+    model: 'deepseek-chat',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
+    },
+  },
+};
+
+const getAIConfig = (): AIProviderConfig => {
+  return AI_CONFIG[AI_CONFIG.provider];
+};
 
 const buildPersonalizedContext = (
   onboardingData: OnboardingData | null,
@@ -130,8 +163,10 @@ const generatePersonalizedGuidance = (
 
 export async function analyseJournalEntry(entry: string): Promise<string> {
   // Load onboarding data to personalize the response
-  const [onboardingError, onboardingData] = await safeAwait(getOnboardingData());
-  
+  const [onboardingError, onboardingData] = await safeAwait(
+    getOnboardingData(),
+  );
+
   if (onboardingError) {
     console.warn('Failed to load onboarding data:', onboardingError);
   }
@@ -149,21 +184,19 @@ export async function analyseJournalEntry(entry: string): Promise<string> {
   Here's my entry:
   "${entry}"`;
 
+  const config = getAIConfig();
   const [error, res] = await safeAwait(
     axios.post(
-      'https://api.openai.com/v1/chat/completions',
+      config.baseURL,
       {
-        model: 'gpt-4o',
+        model: config.model,
         stream: false,
         messages: [{role: 'user', content: prompt}],
       },
       {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
-        },
+        headers: config.headers,
       },
-    )
+    ),
   );
 
   if (error) {
@@ -180,21 +213,19 @@ export async function generateTitleFromEntry(entry: string): Promise<string> {
   Journal entry:
   "${entry}"`;
 
+  const config = getAIConfig();
   const [error, res] = await safeAwait(
     axios.post(
-      'https://api.openai.com/v1/chat/completions',
+      config.baseURL,
       {
-        model: 'gpt-4o',
+        model: config.model,
         stream: false,
         messages: [{role: 'user', content: prompt}],
       },
       {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
-        },
+        headers: config.headers,
       },
-    )
+    ),
   );
 
   if (error) {
@@ -210,9 +241,10 @@ export async function generateTitleFromEntry(entry: string): Promise<string> {
 export async function generateAlternativePerspective(
   entry: string,
 ): Promise<string> {
-  // Load onboarding data to personalize the perspective
-  const [onboardingError, onboardingData] = await safeAwait(getOnboardingData());
-  
+  const [onboardingError, onboardingData] = await safeAwait(
+    getOnboardingData(),
+  );
+
   if (onboardingError) {
     console.warn('Failed to load onboarding data:', onboardingError);
   }
@@ -241,26 +273,24 @@ Journal entry:
 
 Provide only the alternative perspective, no other text.`;
 
+  const config = getAIConfig();
   const [error, res] = await safeAwait(
     axios.post(
-      'https://api.openai.com/v1/chat/completions',
+      config.baseURL,
       {
-        model: 'gpt-4o',
+        model: config.model,
         stream: false,
         messages: [{role: 'user', content: prompt}],
       },
       {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
-        },
+        headers: config.headers,
       },
-    )
+    ),
   );
 
   if (error) {
     console.error('Error generating alternative perspective:', error);
-    return "Every experience, even difficult ones, offers opportunities for growth and self-understanding. Your willingness to reflect and seek different perspectives shows remarkable strength and wisdom. Consider how this moment might be teaching you something valuable about yourself or your resilience.";
+    return 'Every experience, even difficult ones, offers opportunities for growth and self-understanding. Your willingness to reflect and seek different perspectives shows remarkable strength and wisdom. Consider how this moment might be teaching you something valuable about yourself or your resilience.';
   }
 
   return res.data.choices[0].message.content.trim();
@@ -272,124 +302,206 @@ export interface AnalysisData {
     count: number;
     breakdown: string;
     insights: string[];
+    emoji: string;
   }>;
   emotions: Array<{name: string; percentage: number}>;
   perspective: string;
 }
 
+const extractJsonFromResponse = (content: string): string => {
+  let cleanedContent = content.trim();
+
+  // Remove markdown code blocks if present
+  if (cleanedContent.includes('```')) {
+    const jsonMatch = cleanedContent.match(
+      /```(?:json)?\s*(\{[\s\S]*\})\s*```/,
+    );
+    if (jsonMatch) {
+      cleanedContent = jsonMatch[1];
+    }
+  }
+
+  // Find JSON object if there's extra text
+  const jsonMatch = cleanedContent.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    cleanedContent = jsonMatch[0];
+  }
+
+  return cleanedContent.trim();
+};
+
+const validateAndNormalizeAnalysisData = (data: any): AnalysisData => {
+  // Ensure themes have required fields
+  const themes = Array.isArray(data.themes)
+    ? data.themes.map((theme: any) => ({
+        name: String(theme.name || 'Unknown Theme'),
+        count: Math.max(1, Math.min(5, Number(theme.count) || 1)),
+        breakdown: String(theme.breakdown || 'Theme analysis not available.'),
+        insights: Array.isArray(theme.insights)
+          ? theme.insights
+              .map((insight: any) => String(insight))
+              .filter(Boolean)
+          : ['Insight not available'],
+        emoji: String(theme.emoji || ''),
+      }))
+    : [];
+
+  // Ensure emotions have required fields and percentages sum to 100
+  let emotions = Array.isArray(data.emotions)
+    ? data.emotions.map((emotion: any) => ({
+        name: String(emotion.name || 'Unknown'),
+        percentage: Math.max(0, Number(emotion.percentage) || 0),
+      }))
+    : [];
+
+  // Normalize percentages to sum to 100
+  const totalPercentage = emotions.reduce(
+    (sum: number, emotion: any) => sum + emotion.percentage,
+    0,
+  );
+  if (totalPercentage > 0 && totalPercentage !== 100) {
+    emotions = emotions.map((emotion: any) => ({
+      ...emotion,
+      percentage: Math.round((emotion.percentage * 100) / totalPercentage),
+    }));
+  } else if (totalPercentage === 0) {
+    // If no valid percentages, distribute evenly
+    const evenPercentage = Math.floor(100 / Math.max(1, emotions.length));
+    emotions = emotions.map((emotion: any, index: number) => ({
+      ...emotion,
+      percentage:
+        index === emotions.length - 1
+          ? 100 - evenPercentage * (emotions.length - 1)
+          : evenPercentage,
+    }));
+  }
+
+  return {
+    themes,
+    emotions,
+    perspective: String(
+      data.perspective ||
+        'Your willingness to reflect shows great self-awareness and courage.',
+    ),
+  };
+};
+
 export async function analyzeJournalEntryData(
   entry: string,
 ): Promise<AnalysisData> {
-  const prompt = `Analyze this journal entry and return a JSON response with the following structure:
-
-{
-  "themes": [
-    {
-      "name": "Theme1", 
-      "count": 3,
-      "breakdown": "A detailed explanation of how this theme appears in the entry",
-      "insights": ["Key insight 1", "Key insight 2", "Key insight 3"]
-    }
-  ],
-  "emotions": [
-    {"name": "Emotion1", "percentage": 60},
-    {"name": "Emotion2", "percentage": 30}
-  ],
-  "perspective": "A thoughtful alternative perspective that helps the user reflect"
-}
-
-Guidelines:
-- Identify 2-4 main themes (topics like Work, Family, Health, Relationships, Self-Care, Growth, etc.)
-- Count should represent the relative importance/frequency of each theme (1-5 scale)
-- For each theme, provide:
-  * breakdown: 2-3 sentences explaining how this theme manifests in their entry
-  * insights: 2-4 specific observations, patterns, or reflections about this theme
-- Identify 2-4 main emotions with percentages that add up to 100
-- For perspective: Provide a compassionate, insightful alternative viewpoint that:
-  * Reframes their situation in a more positive or balanced light
-  * Highlights strengths or growth opportunities they might not see
-  * Offers a different lens through which to view their experience
-  * Encourages self-compassion and reflection
-  * Is 2-3 sentences that feel supportive and wise
-- Return ONLY valid JSON, no other text
-
-Journal entry:
-"${entry}"`;
-
-  const [error, res] = await safeAwait(
-    axios.post(
-      'https://api.openai.com/v1/chat/completions',
-      {
-        model: 'gpt-4o',
-        stream: false,
-        messages: [{role: 'user', content: prompt}],
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
-        },
-      },
-    )
-  );
-
-  if (error) {
-    console.error('Error analyzing journal entry data:', error);
-    // Return fallback data
+  // Validate input
+  if (!entry || entry.trim().length === 0) {
+    console.warn('Empty journal entry provided to analyzeJournalEntryData');
     return {
       themes: [
         {
           name: 'Self-Reflection',
-          count: 4,
-          breakdown:
-            'Your entry shows deep introspection and willingness to examine your thoughts and feelings.',
-          insights: [
-            'You demonstrate strong self-awareness',
-            "You're actively processing your experiences",
-            'You show courage in facing difficult emotions',
-          ],
-        },
-        {
-          name: 'Daily Life',
           count: 3,
           breakdown:
-            "You're navigating the complexities of everyday experiences and finding meaning in routine moments.",
+            'Taking time to reflect, even briefly, shows mindfulness and self-awareness.',
           insights: [
-            'You notice details in your daily experiences',
-            'You seek meaning in ordinary moments',
-            "You're building awareness of life patterns",
+            'You are practicing mindful reflection',
+            'Every moment of introspection has value',
           ],
-        },
-        {
-          name: 'Emotions',
-          count: 3,
-          breakdown:
-            'Your emotional landscape is rich and varied, showing both vulnerability and strength.',
-          insights: [
-            'You acknowledge your feelings honestly',
-            "You're developing emotional intelligence",
-            'You show resilience in processing emotions',
-          ],
+          emoji: '🤔',
         },
       ],
-      emotions: [
-        {name: 'Contemplative', percentage: 40},
-        {name: 'Hopeful', percentage: 30},
-        {name: 'Uncertain', percentage: 20},
-        {name: 'Grateful', percentage: 10},
-      ],
+      emotions: [{name: 'Contemplative', percentage: 100}],
       perspective:
-        'Your willingness to write and reflect shows incredible self-awareness and courage. Sometimes the act of putting thoughts into words is itself a form of healing and growth.',
+        'Even brief moments of reflection demonstrate your commitment to self-awareness and growth.',
     };
   }
 
+  const prompt = `You are a journal analysis AI. Analyze this journal entry and return ONLY a valid JSON response with exactly this structure:
+
+{
+  "themes": [
+    {
+      "name": "Theme Name",
+      "count": 3,
+      "breakdown": "2-3 sentences explaining how this theme appears in the entry",
+      "insights": ["Insight 1", "Insight 2", "Insight 3"],
+      "emoji": "📝"
+    }
+  ],
+  "emotions": [
+    {"name": "Emotion1", "percentage": 60},
+    {"name": "Emotion2", "percentage": 40}
+  ],
+  "perspective": "A thoughtful alternative perspective in 2-3 sentences"
+}
+
+CRITICAL REQUIREMENTS:
+- Return ONLY valid JSON, no markdown, no explanations, no extra text
+- Identify 2-4 main themes from: Work, Family, Health, Relationships, Self-Care, Growth, Stress, Goals, Creativity, etc.
+- Count represents theme importance (1-5 scale)
+- Each theme needs exactly: name, count, breakdown (string), insights (array of strings), emoji (single relevant emoji)
+- Choose appropriate emojis: 💼 (work), 👨‍👩‍👧‍👦 (family), 💪 (health), ❤️ (relationships), 🧘 (self-care), 🌱 (growth), 😰 (stress), 🎯 (goals), 🎨 (creativity), 🤔 (reflection), etc.
+- Identify 2-4 emotions with percentages that sum to 100
+- Perspective should be supportive and reframe their situation positively
+- All strings must be properly escaped for JSON
+
+Journal entry: "${entry.replace(/"/g, '\\"').replace(/\n/g, '\\n')}"
+
+Return only the JSON object:`;
+
+  const config = getAIConfig();
+  const [error, res] = await safeAwait(
+    axios.post(
+      config.baseURL,
+      {
+        model: config.model,
+        stream: false,
+        messages: [{role: 'user', content: prompt}],
+        temperature: 0.3, // Lower temperature for more consistent JSON output
+        max_tokens: 1000, // Limit response length to encourage conciseness
+      },
+      {
+        headers: config.headers,
+      },
+    ),
+  );
+
+  if (error) {
+    console.error(
+      'Error analyzing journal entry data - API call failed:',
+      error,
+    );
+    return getFallbackAnalysisData();
+  }
+
+  if (!res?.data?.choices?.[0]?.message?.content) {
+    console.error('Invalid API response structure:', res?.data);
+    return getFallbackAnalysisData();
+  }
+
   try {
-    const analysisData = JSON.parse(res.data.choices[0].message.content.trim());
+    const rawContent = res.data.choices[0].message.content;
+    console.log('Raw AI response:', rawContent); // Debug logging
+
+    const cleanedContent = extractJsonFromResponse(rawContent);
+    console.log('Cleaned content for parsing:', cleanedContent); // Debug logging
+
+    const parsedData = JSON.parse(cleanedContent);
+
+    // Validate and normalize the data
+    const analysisData = validateAndNormalizeAnalysisData(parsedData);
+
+    console.log(
+      'Successfully parsed and validated analysis data:',
+      analysisData,
+    );
     return analysisData;
   } catch (parseError) {
     console.error('Error parsing AI analysis response:', parseError);
+    console.error('Raw response was:', res.data.choices[0].message.content);
+    return getFallbackAnalysisData();
+  }
+}
 
-    const fallbackThemes = [
+const getFallbackAnalysisData = (): AnalysisData => {
+  return {
+    themes: [
       {
         name: 'Self-Reflection',
         count: 4,
@@ -400,6 +512,7 @@ Journal entry:
           "You're actively processing your experiences",
           'You show courage in facing difficult emotions',
         ],
+        emoji: '🤔',
       },
       {
         name: 'Daily Life',
@@ -411,6 +524,7 @@ Journal entry:
           'You seek meaning in ordinary moments',
           "You're building awareness of life patterns",
         ],
+        emoji: '📅',
       },
       {
         name: 'Emotions',
@@ -422,21 +536,16 @@ Journal entry:
           "You're developing emotional intelligence",
           'You show resilience in processing emotions',
         ],
+        emoji: '💭',
       },
-    ];
-
-    const fallbackEmotions = [
+    ],
+    emotions: [
       {name: 'Contemplative', percentage: 40},
       {name: 'Hopeful', percentage: 30},
       {name: 'Uncertain', percentage: 20},
       {name: 'Grateful', percentage: 10},
-    ];
-
-    return {
-      themes: fallbackThemes,
-      emotions: fallbackEmotions,
-      perspective:
-        'Your willingness to write and reflect shows incredible self-awareness and courage. Sometimes the act of putting thoughts into words is itself a form of healing and growth.',
-    };
-  }
-}
+    ],
+    perspective:
+      'Your willingness to write and reflect shows incredible self-awareness and courage. Sometimes the act of putting thoughts into words is itself a form of healing and growth.',
+  };
+};

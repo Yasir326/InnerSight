@@ -36,7 +36,6 @@ const EntryDetailScreen: React.FC<Props> = ({route, navigation}) => {
       } else if (journalEntry) {
         setEntry(journalEntry);
       } else {
-        // Entry not found
         navigation.goBack();
       }
 

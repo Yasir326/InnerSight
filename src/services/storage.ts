@@ -24,7 +24,6 @@ const STORAGE_KEYS = {
 };
 
 export const storage = {
-  // Journal Entries
   async saveEntry(entry: JournalEntry): Promise<void> {
     const existingEntries = await this.getEntries();
     const updatedEntries = [...existingEntries, entry];
@@ -139,7 +138,7 @@ export const storage = {
       console.error('Error checking onboarding status:', error);
       return false;
     }
-    return complete === 'true';
+    return complete === 'false';
   },
 
   async setOnboardingComplete(): Promise<void> {

@@ -1,8 +1,4 @@
-'use client';
-
-import type React from 'react';
-
-import {useState, useCallback} from 'react';
+import React, {useState, useCallback} from 'react';
 import {
   View,
   Text,
@@ -18,32 +14,53 @@ import Svg, {Path} from 'react-native-svg';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../navigation/AppNavigator';
 import {useNavigation, useFocusEffect} from '@react-navigation/native';
-import {getJournalEntries, deleteJournalEntry, type JournalEntry} from '../services/journalEntries';
+import {
+  getJournalEntries,
+  deleteJournalEntry,
+  type JournalEntry,
+} from '../services/journalEntries';
 import {safeAwait} from '../utils/safeAwait';
 import {getUserName} from '../services/onboarding';
 import {storage} from '../services/storage';
 
-// Custom Trash Icon Component
+// Custom Icons
 const TrashIcon: React.FC<{size?: number; color?: string}> = ({
   size = 16,
-  color = '#FFFFFF',
+  color = '#9CA3AF',
 }) => (
-  <Svg width={size} height={size} viewBox="0 0 448 512" fill={color}>
-    <Path d="M135.2 17.7L128 32H32C14.3 32 0 46.3 0 64S14.3 96 32 96H416c17.7 0 32-14.3 32-32s-14.3-32-32-32H320l-7.2-14.3C307.4 6.8 296.3 0 284.2 0H163.8c-12.1 0-23.2 6.8-28.6 17.7zM416 128H32L53.2 467c1.6 25.3 22.6 45 47.9 45H346.9c25.3 0 46.3-19.7 47.9-45L416 128z"/>
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+    <Path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" />
   </Svg>
 );
-
 
 const PlusIcon: React.FC<{size?: number; color?: string}> = ({
   size = 24,
   color = '#FFFFFF',
 }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
-    <Path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/>
+    <Path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z" />
   </Svg>
 );
 
-const HomeScreen: React.FC = () => {
+const BookIcon: React.FC<{size?: number; color?: string}> = ({
+  size = 48,
+  color = '#D1D5DB',
+}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+    <Path d="M18,2A2,2 0 0,1 20,4V20A2,2 0 0,1 18,22H6A2,2 0 0,1 4,20V4A2,2 0 0,1 6,2H18M18,4H13V12L10.5,9.75L8,12V4H6V20H18V4Z" />
+  </Svg>
+);
+
+const CalendarIcon: React.FC<{size?: number; color?: string}> = ({
+  size = 14,
+  color = '#9CA3AF',
+}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+    <Path d="M19,3H18V1H16V3H8V1H6V3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5A2,2 0 0,0 19,3M19,19H5V8H19V19Z" />
+  </Svg>
+);
+
+const NotionHomeScreen: React.FC = () => {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState<string | null>(null);
@@ -80,10 +97,32 @@ const HomeScreen: React.FC = () => {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    // Check if it's today
+    if (date.toDateString() === today.toDateString()) {
+      return 'Today';
+    }
+
+    // Check if it's yesterday
+    if (date.toDateString() === yesterday.toDateString()) {
+      return 'Yesterday';
+    }
+
+    // Check if it's within the last week
+    const daysDiff = Math.floor(
+      (today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24),
+    );
+    if (daysDiff < 7) {
+      return date.toLocaleDateString('en-US', {weekday: 'long'});
+    }
+
     return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
-      year: 'numeric',
+      year: date.getFullYear() !== today.getFullYear() ? 'numeric' : undefined,
     });
   };
 
@@ -100,7 +139,7 @@ const HomeScreen: React.FC = () => {
     }
 
     if (userName && userName.trim()) {
-      return `${greeting}, ${userName}! what's on your mind?`;
+      return `${greeting}, ${userName}!`;
     }
 
     return `${greeting}!`;
@@ -119,8 +158,10 @@ const HomeScreen: React.FC = () => {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            const [error, success] = await safeAwait(deleteJournalEntry(entryId));
-            
+            const [error, success] = await safeAwait(
+              deleteJournalEntry(entryId),
+            );
+
             if (error || !success) {
               console.error('Error deleting journal entry:', error);
               Alert.alert(
@@ -128,8 +169,9 @@ const HomeScreen: React.FC = () => {
                 'Failed to delete the journal entry. Please try again.',
               );
             } else {
-              // Remove the entry from the local state
-              setEntries(prevEntries => prevEntries.filter(entry => entry.id !== entryId));
+              setEntries(prevEntries =>
+                prevEntries.filter(entry => entry.id !== entryId),
+              );
             }
           },
         },
@@ -152,7 +194,6 @@ const HomeScreen: React.FC = () => {
           onPress: async () => {
             try {
               await storage.resetOnboarding();
-              // Force app to restart by navigating to Welcome
               navigation.reset({
                 index: 0,
                 routes: [{name: 'Welcome'}],
@@ -168,58 +209,84 @@ const HomeScreen: React.FC = () => {
   };
 
   const renderEntryItem = ({item}: {item: JournalEntry}) => (
-    <View style={styles.entryCard}>
-      <TouchableOpacity
-        style={styles.entryContent}
-        onPress={() =>
-          navigation.navigate('Analysis', {
-            entryText: item.content,
-            entryId: item.id,
-            skipAI: true,
-            entryTitle: item.title,
-          })
-        }>
-        <View style={styles.entryHeader}>
+    <TouchableOpacity
+      style={styles.entryCard}
+      onPress={() =>
+        navigation.navigate('Analysis', {
+          entryText: item.content,
+          entryId: item.id,
+          skipAI: true,
+          entryTitle: item.title,
+        })
+      }
+      activeOpacity={0.7}>
+      <View style={styles.entryHeader}>
+        <View style={styles.entryDateContainer}>
+          <CalendarIcon size={14} color="#9CA3AF" />
           <Text style={styles.entryDate}>{formatDate(item.createdAt)}</Text>
-          <TouchableOpacity
-            style={styles.deleteButton}
-            onPress={() => handleDeleteEntry(item.id, item.title)}>
-            <TrashIcon size={16} color="#333333" />
-          </TouchableOpacity>
         </View>
-        <Text style={styles.entryTitle} numberOfLines={1}>
-          {item.title}
-        </Text>
-        <Text style={styles.entryPreview} numberOfLines={2}>
-          {item.content}
-        </Text>
-      </TouchableOpacity>
-    </View>
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => handleDeleteEntry(item.id, item.title)}
+          hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
+          <TrashIcon size={16} color="#9CA3AF" />
+        </TouchableOpacity>
+      </View>
+
+      <Text style={styles.entryTitle} numberOfLines={2}>
+        {item.title}
+      </Text>
+
+      <Text style={styles.entryPreview} numberOfLines={3}>
+        {item.content}
+      </Text>
+
+      <View style={styles.entryFooter}>
+        <Text style={styles.readMore}>Tap to view analysis</Text>
+      </View>
+    </TouchableOpacity>
   );
 
   const renderEmptyList = () => (
     <View style={styles.emptyContainer}>
-      <Text style={styles.emptyTitle}>No Journal Entries Yet</Text>
+      <BookIcon size={64} color="#E5E7EB" />
+      <Text style={styles.emptyTitle}>Start Your Journey</Text>
       <Text style={styles.emptyText}>
-        Start writing to begin your journaling journey.
+        Your thoughts and reflections will appear here. Tap the + button to
+        create your first entry.
       </Text>
+    </View>
+  );
+
+  const renderHeader = () => (
+    <View style={styles.headerContent}>
+      <TouchableOpacity
+        onLongPress={handleResetOnboarding}
+        delayLongPress={2000}
+        activeOpacity={1}>
+        <Text style={styles.welcomeMessage}>{getWelcomeMessage()}</Text>
+        <Text style={styles.welcomeSubtitle}>What's on your mind?</Text>
+      </TouchableOpacity>
+
+      {entries.length > 0 && (
+        <View style={styles.statsContainer}>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{entries.length}</Text>
+            <Text style={styles.statLabel}>
+              {entries.length === 1 ? 'Entry' : 'Entries'}
+            </Text>
+          </View>
+        </View>
+      )}
     </View>
   );
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          onLongPress={handleResetOnboarding}
-          delayLongPress={2000}
-          activeOpacity={1}>
-          <Text style={styles.welcomeMessage}>{getWelcomeMessage()}</Text>
-        </TouchableOpacity>
-      </View>
-
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#000000" />
+          <ActivityIndicator size="large" color="#6B7280" />
+          <Text style={styles.loadingText}>Loading your entries...</Text>
         </View>
       ) : (
         <FlatList
@@ -228,21 +295,17 @@ const HomeScreen: React.FC = () => {
           keyExtractor={item => item.id}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={renderEmptyList}
-          ListHeaderComponent={
-            entries.length > 0 ? (
-              <Text style={styles.sectionTitle}>Your Journal Entries</Text>
-            ) : null
-          }
+          ListHeaderComponent={renderHeader}
+          showsVerticalScrollIndicator={false}
         />
       )}
 
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.newEntryButton}
-          onPress={() => navigation.navigate('Entry')}>
-          <PlusIcon size={28} color="#FFFFFF" />
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity
+        style={styles.newEntryButton}
+        onPress={() => navigation.navigate('Entry')}
+        activeOpacity={0.8}>
+        <PlusIcon size={24} color="#FFFFFF" />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 };
@@ -250,111 +313,159 @@ const HomeScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  welcomeMessage: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#000000',
-    marginBottom: 4,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#666666',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    backgroundColor: '#F9FAFB',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#6B7280',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
   listContent: {
     padding: 20,
-    flexGrow: 1,
+    paddingBottom: 100,
   },
-  sectionTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#000000',
-    marginBottom: 16,
+  headerContent: {
+    marginBottom: 32,
+  },
+  welcomeMessage: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 4,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+  },
+  welcomeSubtitle: {
+    fontSize: 16,
+    color: '#6B7280',
+    marginBottom: 20,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  statItem: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  statNumber: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#111827',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
     fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
   entryCard: {
-    backgroundColor: '#F5F5F7',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-  },
-  entryContent: {
-    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
   entryHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
+  },
+  entryDateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   entryDate: {
-    fontSize: 14,
-    color: '#888888',
+    fontSize: 13,
+    color: '#9CA3AF',
+    fontWeight: '500',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
   entryTitle: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '600',
-    color: '#000000',
+    color: '#111827',
     marginBottom: 8,
+    lineHeight: 24,
     fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
   entryPreview: {
     fontSize: 15,
-    color: '#555555',
-    lineHeight: 20,
+    color: '#6B7280',
+    lineHeight: 22,
+    marginBottom: 12,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+  },
+  entryFooter: {
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    paddingTop: 12,
+  },
+  readMore: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    fontWeight: '500',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
   deleteButton: {
-    padding: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#F9FAFB',
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 40,
-    paddingVertical: 60,
+    paddingVertical: 80,
+    gap: 16,
   },
   emptyTitle: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '600',
-    color: '#000000',
-    marginBottom: 12,
+    color: '#111827',
     textAlign: 'center',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
   emptyText: {
     fontSize: 16,
-    color: '#888888',
+    color: '#6B7280',
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 24,
     fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
-  footer: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    zIndex: 1,
-  },
   newEntryButton: {
-    backgroundColor: '#000000',
+    position: 'absolute',
+    bottom: 30,
+    right: 20,
+    backgroundColor: '#111827',
     width: 56,
     height: 56,
     borderRadius: 28,
@@ -363,12 +474,12 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
   },
 });
 
-export default HomeScreen;
+export default NotionHomeScreen;
