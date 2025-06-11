@@ -304,7 +304,7 @@ export interface AnalysisData {
     insights: string[];
     emoji: string;
   }>;
-  emotions: Array<{name: string; percentage: number}>;
+  emotions: Array<{name: string; percentage: number; color: string}>;
   perspective: string;
 }
 
@@ -330,6 +330,73 @@ const extractJsonFromResponse = (content: string): string => {
   return cleanedContent.trim();
 };
 
+const getEmotionColor = (emotionName: string): string => {
+  const emotion = emotionName.toLowerCase();
+  
+  // Positive emotions - warm, bright colors
+  if (emotion.includes('happy') || emotion.includes('joy') || emotion.includes('elated')) {
+    return '#F59E0B'; // Bright amber
+  }
+  if (emotion.includes('grateful') || emotion.includes('thankful') || emotion.includes('appreciative')) {
+    return '#10B981'; // Emerald green
+  }
+  if (emotion.includes('hopeful') || emotion.includes('optimistic') || emotion.includes('confident')) {
+    return '#3B82F6'; // Blue
+  }
+  if (emotion.includes('excited') || emotion.includes('enthusiastic') || emotion.includes('energetic')) {
+    return '#F97316'; // Orange
+  }
+  if (emotion.includes('peaceful') || emotion.includes('calm') || emotion.includes('serene')) {
+    return '#06B6D4'; // Cyan
+  }
+  if (emotion.includes('content') || emotion.includes('satisfied') || emotion.includes('fulfilled')) {
+    return '#8B5CF6'; // Purple
+  }
+  if (emotion.includes('love') || emotion.includes('affection') || emotion.includes('caring')) {
+    return '#EC4899'; // Pink
+  }
+  
+  // Neutral/contemplative emotions - muted colors
+  if (emotion.includes('contemplative') || emotion.includes('reflective') || emotion.includes('thoughtful')) {
+    return '#64748B'; // Slate
+  }
+  if (emotion.includes('curious') || emotion.includes('wondering') || emotion.includes('questioning')) {
+    return '#7C3AED'; // Violet
+  }
+  if (emotion.includes('determined') || emotion.includes('focused') || emotion.includes('motivated')) {
+    return '#059669'; // Green
+  }
+  if (emotion.includes('nostalgic') || emotion.includes('reminiscent') || emotion.includes('wistful')) {
+    return '#D97706'; // Amber
+  }
+  
+  // Challenging emotions - cooler, more muted tones
+  if (emotion.includes('sad') || emotion.includes('melancholy') || emotion.includes('down')) {
+    return '#6366F1'; // Indigo
+  }
+  if (emotion.includes('anxious') || emotion.includes('worried') || emotion.includes('nervous')) {
+    return '#EF4444'; // Red
+  }
+  if (emotion.includes('frustrated') || emotion.includes('annoyed') || emotion.includes('irritated')) {
+    return '#DC2626'; // Dark red
+  }
+  if (emotion.includes('uncertain') || emotion.includes('confused') || emotion.includes('unsure')) {
+    return '#F59E0B'; // Amber
+  }
+  if (emotion.includes('overwhelmed') || emotion.includes('stressed') || emotion.includes('pressured')) {
+    return '#7C2D12'; // Brown
+  }
+  if (emotion.includes('lonely') || emotion.includes('isolated') || emotion.includes('disconnected')) {
+    return '#475569'; // Dark slate
+  }
+  if (emotion.includes('tired') || emotion.includes('exhausted') || emotion.includes('drained')) {
+    return '#6B7280'; // Gray
+  }
+  
+  // Default fallback color
+  return '#64748B'; // Slate
+};
+
 const validateAndNormalizeAnalysisData = (data: any): AnalysisData => {
   // Ensure themes have required fields
   const themes = Array.isArray(data.themes)
@@ -351,6 +418,7 @@ const validateAndNormalizeAnalysisData = (data: any): AnalysisData => {
     ? data.emotions.map((emotion: any) => ({
         name: String(emotion.name || 'Unknown'),
         percentage: Math.max(0, Number(emotion.percentage) || 0),
+        color: String(emotion.color || getEmotionColor(emotion.name || 'Unknown')),
       }))
     : [];
 
@@ -406,11 +474,21 @@ export async function analyzeJournalEntryData(
           emoji: '🤔',
         },
       ],
-      emotions: [{name: 'Contemplative', percentage: 100}],
+      emotions: [{name: 'Contemplative', percentage: 100, color: '#64748B'}],
       perspective:
         'Even brief moments of reflection demonstrate your commitment to self-awareness and growth.',
     };
   }
+
+
+  const [onboardingError, onboardingData] = await safeAwait(getOnboardingData());
+
+  if (onboardingError) {
+    console.warn('Failed to load onboarding data for analysis:', onboardingError);
+  }
+
+  const personalContext = buildPersonalizedContext(onboardingData || null);
+  const personalGuidance = generatePersonalizedGuidance(onboardingData || null);
 
   const prompt = `You are a journal analysis AI. Analyze this journal entry and return ONLY a valid JSON response with exactly this structure:
 
@@ -425,8 +503,8 @@ export async function analyzeJournalEntryData(
     }
   ],
   "emotions": [
-    {"name": "Emotion1", "percentage": 60},
-    {"name": "Emotion2", "percentage": 40}
+    {"name": "Emotion1", "percentage": 60, "color": "#3B82F6"},
+    {"name": "Emotion2", "percentage": 40, "color": "#10B981"}
   ],
   "perspective": "A thoughtful alternative perspective in 2-3 sentences"
 }
@@ -436,10 +514,16 @@ CRITICAL REQUIREMENTS:
 - Identify 2-4 main themes from: Work, Family, Health, Relationships, Self-Care, Growth, Stress, Goals, Creativity, etc.
 - Count represents theme importance (1-5 scale)
 - Each theme needs exactly: name, count, breakdown (string), insights (array of strings), emoji (single relevant emoji)
-- Choose appropriate emojis: 💼 (work), 👨‍👩‍👧‍👦 (family), 💪 (health), ❤️ (relationships), 🧘 (self-care), 🌱 (growth), 😰 (stress), 🎯 (goals), 🎨 (creativity), 🤔 (reflection), etc.
+- Choose appropriate emojis.
 - Identify 2-4 emotions with percentages that sum to 100
+- Each emotion must include a "color" field with a hex color code that matches the emotion:
+  * Positive emotions: warm colors (#F59E0B amber, #10B981 green, #3B82F6 blue, #F97316 orange)
+  * Contemplative emotions: muted colors (#64748B slate, #7C3AED violet)
+  * Challenging emotions: cooler tones (#6366F1 indigo, #EF4444 red, #F59E0B amber)
 - Perspective should be supportive and reframe their situation positively
 - All strings must be properly escaped for JSON
+
+${personalContext}${personalGuidance}
 
 Journal entry: "${entry.replace(/"/g, '\\"').replace(/\n/g, '\\n')}"
 
@@ -505,47 +589,55 @@ const getFallbackAnalysisData = (): AnalysisData => {
       {
         name: 'Self-Reflection',
         count: 4,
-        breakdown:
-          'Your entry shows deep introspection and willingness to examine your thoughts and feelings.',
+        breakdown: 'Your entry shows deep introspection and willingness to examine your thoughts and feelings.',
         insights: [
           'You demonstrate strong self-awareness',
           "You're actively processing your experiences",
           'You show courage in facing difficult emotions',
         ],
-        emoji: '🤔',
+        emoji: '🤔'
       },
       {
         name: 'Daily Life',
         count: 3,
-        breakdown:
-          "You're navigating the complexities of everyday experiences and finding meaning in routine moments.",
+        breakdown: "You're navigating the complexities of everyday experiences and finding meaning in routine moments.",
         insights: [
           'You notice details in your daily experiences',
           'You seek meaning in ordinary moments',
           "You're building awareness of life patterns",
         ],
-        emoji: '📅',
+        emoji: '📅'
       },
       {
         name: 'Emotions',
         count: 3,
-        breakdown:
-          'Your emotional landscape is rich and varied, showing both vulnerability and strength.',
+        breakdown: 'Your emotional landscape is rich and varied, showing both vulnerability and strength.',
         insights: [
           'You acknowledge your feelings honestly',
           "You're developing emotional intelligence",
           'You show resilience in processing emotions',
         ],
-        emoji: '💭',
+        emoji: '💭'
+      },
+      {
+        name: 'Relationships',
+        count: 2,
+        breakdown: 'Your connections with others play an important role in your personal growth and well-being.',
+        insights: [
+          'You value meaningful connections',
+          "You're learning about interpersonal dynamics",
+          'You seek understanding in your relationships',
+        ],
+        emoji: '❤️'
       },
     ],
     emotions: [
-      {name: 'Contemplative', percentage: 40},
-      {name: 'Hopeful', percentage: 30},
-      {name: 'Uncertain', percentage: 20},
-      {name: 'Grateful', percentage: 10},
+      {name: 'Contemplative', percentage: 40, color: '#64748B'},
+      {name: 'Hopeful', percentage: 30, color: '#3B82F6'},
+      {name: 'Uncertain', percentage: 20, color: '#F59E0B'},
+      {name: 'Grateful', percentage: 10, color: '#10B981'},
     ],
     perspective:
-      'Your willingness to write and reflect shows incredible self-awareness and courage. Sometimes the act of putting thoughts into words is itself a form of healing and growth.',
+      'Your willingness to write and reflect shows incredible self-awareness and courage.',
   };
 };
