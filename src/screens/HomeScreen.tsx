@@ -15,13 +15,13 @@ import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../navigation/AppNavigator';
 import {useNavigation, useFocusEffect} from '@react-navigation/native';
 import {
-  getJournalEntries,
-  deleteJournalEntry,
-  type JournalEntry,
+  journalEntriesService,
+  JournalEntry,
 } from '../services/journalEntries';
 import {safeAwait} from '../utils/safeAwait';
 import {getUserName} from '../services/onboarding';
-import {storage} from '../services/storage';
+import {storageService} from '../services/storage';
+
 
 // Custom Icons
 const TrashIcon: React.FC<{size?: number; color?: string}> = ({
@@ -72,7 +72,7 @@ const NotionHomeScreen: React.FC = () => {
       const loadData = async () => {
         setLoading(true);
         const [entriesError, journalEntries] = await safeAwait(
-          getJournalEntries(),
+          journalEntriesService.getEntries(),
         );
         const [nameError, name] = await safeAwait(getUserName());
 
@@ -159,7 +159,7 @@ const NotionHomeScreen: React.FC = () => {
           style: 'destructive',
           onPress: async () => {
             const [error, success] = await safeAwait(
-              deleteJournalEntry(entryId),
+              journalEntriesService.deleteEntry(entryId),
             );
 
             if (error || !success) {
@@ -193,7 +193,7 @@ const NotionHomeScreen: React.FC = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await storage.resetOnboarding();
+              await storageService.resetOnboarding();
               navigation.reset({
                 index: 0,
                 routes: [{name: 'Welcome'}],

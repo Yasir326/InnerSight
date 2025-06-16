@@ -2,6 +2,10 @@ import type React from 'react';
 import {useState, useEffect} from 'react';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
+import {View, Text, ActivityIndicator, StyleSheet} from 'react-native';
+
+// Auth Component
+import {Auth} from '../components/Auth';
 
 // Onboarding Screens
 import WelcomeScreen from '../screens/onboarding/WelcomeScreen';
@@ -20,9 +24,19 @@ import StatsScreen from '../screens/StatsScreen';
 import ResultsScreen from '../screens/ResultsScreen';
 
 // Services
-import {storage} from '../services/storage';
+import {storageService} from '../services/storage';
+import * as SupabaseModule from '../lib/supabase';
+
+// Debug the import
+console.log('🔍 Supabase module contents:', Object.keys(SupabaseModule));
+console.log('🔍 authHelpers type:', typeof SupabaseModule.authHelpers);
+
+const {authHelpers} = SupabaseModule;
 
 export type RootStackParamList = {
+  // Auth
+  Auth: undefined;
+
   // Onboarding
   Welcome: undefined;
   OnboardingName: undefined;
@@ -47,28 +61,124 @@ export type RootStackParamList = {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+// Loading Screen Component
+const LoadingScreen: React.FC<{message?: string}> = ({
+  message = 'Loading...',
+}) => (
+  <View style={styles.loadingContainer}>
+    <ActivityIndicator size="large" color="#3B82F6" />
+    <Text style={styles.loadingText}>{message}</Text>
+  </View>
+);
+
 const AppNavigator: React.FC = () => {
-  const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(
+    null,
+  );
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadingMessage, setLoadingMessage] = useState('Initializing...');
 
   useEffect(() => {
-    const checkOnboardingStatus = async () => {
+    const checkAuthAndOnboarding = async () => {
       try {
-        const complete = await storage.isOnboardingComplete();
-        setOnboardingComplete(complete);
+        console.log('🔍 Checking authentication status...');
+        setLoadingMessage('Checking authentication...');
+
+        // Check authentication status
+        const authenticated = await authHelpers.isAuthenticated();
+        console.log('🔐 Authentication status:', authenticated);
+
+        setIsAuthenticated(authenticated);
+
+        if (authenticated) {
+          console.log('✅ User is authenticated, checking onboarding...');
+          setLoadingMessage('Loading your profile...');
+          // If authenticated, check onboarding status
+          const complete = await storageService.isOnboardingComplete();
+          console.log('📋 Onboarding complete:', complete);
+          setOnboardingComplete(complete);
+        } else {
+          console.log('❌ User is not authenticated');
+          setOnboardingComplete(null);
+        }
       } catch (error) {
-        console.error('Error checking onboarding status:', error);
-        // Default to showing onboarding if there's an error
-        setOnboardingComplete(false);
+        console.error('💥 Error checking auth/onboarding status:', error);
+        setIsAuthenticated(false);
+        setOnboardingComplete(null);
+      } finally {
+        setIsLoading(false);
+        console.log('✅ Initial auth check complete');
       }
     };
 
-    checkOnboardingStatus();
+    checkAuthAndOnboarding();
+
+    // Listen for auth state changes
+    console.log('👂 Setting up auth state listener...');
+    const {
+      data: {subscription},
+    } = authHelpers.onAuthStateChange(async (event, session) => {
+      console.log('🔄 Auth state changed:', event, !!session);
+      const authenticated = !!session;
+      setIsAuthenticated(authenticated);
+
+      if (authenticated) {
+        // Check onboarding when user signs in
+        const complete = await storageService.isOnboardingComplete();
+        setOnboardingComplete(complete);
+      } else {
+        setOnboardingComplete(null);
+      }
+    });
+
+    return () => {
+      console.log('🧹 Cleaning up auth listener...');
+      subscription?.unsubscribe();
+    };
   }, []);
 
-  // Show loading state while checking onboarding status
-  if (onboardingComplete === null) {
-    return null; // You could show a loading screen here if desired
+  const handleAuthSuccess = async () => {
+    console.log('🎉 Auth success callback triggered');
+    setIsAuthenticated(true);
+    // Check onboarding status after successful auth
+    const complete = await storageService.isOnboardingComplete();
+    setOnboardingComplete(complete);
+  };
+
+  // Show loading screen during initial setup
+  if (isLoading) {
+    console.log('⏳ Showing loading screen:', loadingMessage);
+    return <LoadingScreen message={loadingMessage} />;
   }
+
+  // Show loading state while checking auth status
+  if (isAuthenticated === null) {
+    console.log('⏳ Auth status still null, showing loading...');
+    return <LoadingScreen message="Checking authentication..." />;
+  }
+
+  // If not authenticated, show auth screen
+  if (!isAuthenticated) {
+    console.log('🔐 Showing auth screen');
+    return (
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={{headerShown: false}}>
+          <Stack.Screen name="Auth">
+            {() => <Auth onAuthSuccess={handleAuthSuccess} />}
+          </Stack.Screen>
+        </Stack.Navigator>
+      </NavigationContainer>
+    );
+  }
+
+  // If authenticated but onboarding status is still loading
+  if (onboardingComplete === null) {
+    console.log('⏳ Onboarding status still loading...');
+    return <LoadingScreen message="Setting up your experience..." />;
+  }
+
+  console.log('🚀 Showing main app, onboarding complete:', onboardingComplete);
 
   return (
     <NavigationContainer>
@@ -137,5 +247,20 @@ const AppNavigator: React.FC = () => {
     </NavigationContainer>
   );
 };
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+});
 
 export default AppNavigator;

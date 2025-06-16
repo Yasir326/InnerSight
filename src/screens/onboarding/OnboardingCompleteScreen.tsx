@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../../navigation/AppNavigator';
-import {storage} from '../../services/storage';
+import {storageService} from '../../services/storage';
 
 type Props = {
   navigation: NativeStackNavigationProp<
@@ -51,7 +51,7 @@ const OnboardingCompleteScreen: React.FC<Props> = ({navigation}) => {
   const handleStartJourney = async () => {
     try {
       // Mark onboarding as complete
-      await storage.setOnboardingComplete();
+      await storageService.markOnboardingComplete();
 
       // Navigate to home and reset navigation stack
       navigation.reset({

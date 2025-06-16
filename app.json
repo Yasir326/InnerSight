@@ -1,4 +1,5 @@
 {
   "name": "InnerSight",
-  "displayName": "InnerSight"
+  "displayName": "InnerSight",
+  "scheme": "innersight"
 }

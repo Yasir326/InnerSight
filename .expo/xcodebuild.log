@@ -1,0 +1,3 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -workspace /Users/KHANYA/ai_projects/AutoJOurnal/InnerSight/ios/InnerSight.xcworkspace -configuration Debug -scheme InnerSight -destination id=28B85716-9AA2-479F-85E7-F5ACFDE975C7
+

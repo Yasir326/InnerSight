@@ -1,5 +1,5 @@
 import axios from 'axios';
-import {getOnboardingData, OnboardingData} from './onboarding';
+import {storageService, type OnboardingData} from './storage';
 import {OPENAI_API_KEY, DEEPSEEK_API_KEY} from '@env';
 import {safeAwait} from '../utils/safeAwait';
 
@@ -164,7 +164,7 @@ const generatePersonalizedGuidance = (
 export async function analyseJournalEntry(entry: string): Promise<string> {
   // Load onboarding data to personalize the response
   const [onboardingError, onboardingData] = await safeAwait(
-    getOnboardingData(),
+    storageService.getOnboardingData(),
   );
 
   if (onboardingError) {
@@ -242,7 +242,7 @@ export async function generateAlternativePerspective(
   entry: string,
 ): Promise<string> {
   const [onboardingError, onboardingData] = await safeAwait(
-    getOnboardingData(),
+    storageService.getOnboardingData(),
   );
 
   if (onboardingError) {
@@ -332,67 +332,139 @@ const extractJsonFromResponse = (content: string): string => {
 
 const getEmotionColor = (emotionName: string): string => {
   const emotion = emotionName.toLowerCase();
-  
+
   // Positive emotions - warm, bright colors
-  if (emotion.includes('happy') || emotion.includes('joy') || emotion.includes('elated')) {
+  if (
+    emotion.includes('happy') ||
+    emotion.includes('joy') ||
+    emotion.includes('elated')
+  ) {
     return '#F59E0B'; // Bright amber
   }
-  if (emotion.includes('grateful') || emotion.includes('thankful') || emotion.includes('appreciative')) {
+  if (
+    emotion.includes('grateful') ||
+    emotion.includes('thankful') ||
+    emotion.includes('appreciative')
+  ) {
     return '#10B981'; // Emerald green
   }
-  if (emotion.includes('hopeful') || emotion.includes('optimistic') || emotion.includes('confident')) {
+  if (
+    emotion.includes('hopeful') ||
+    emotion.includes('optimistic') ||
+    emotion.includes('confident')
+  ) {
     return '#3B82F6'; // Blue
   }
-  if (emotion.includes('excited') || emotion.includes('enthusiastic') || emotion.includes('energetic')) {
+  if (
+    emotion.includes('excited') ||
+    emotion.includes('enthusiastic') ||
+    emotion.includes('energetic')
+  ) {
     return '#F97316'; // Orange
   }
-  if (emotion.includes('peaceful') || emotion.includes('calm') || emotion.includes('serene')) {
+  if (
+    emotion.includes('peaceful') ||
+    emotion.includes('calm') ||
+    emotion.includes('serene')
+  ) {
     return '#06B6D4'; // Cyan
   }
-  if (emotion.includes('content') || emotion.includes('satisfied') || emotion.includes('fulfilled')) {
+  if (
+    emotion.includes('content') ||
+    emotion.includes('satisfied') ||
+    emotion.includes('fulfilled')
+  ) {
     return '#8B5CF6'; // Purple
   }
-  if (emotion.includes('love') || emotion.includes('affection') || emotion.includes('caring')) {
+  if (
+    emotion.includes('love') ||
+    emotion.includes('affection') ||
+    emotion.includes('caring')
+  ) {
     return '#EC4899'; // Pink
   }
-  
+
   // Neutral/contemplative emotions - muted colors
-  if (emotion.includes('contemplative') || emotion.includes('reflective') || emotion.includes('thoughtful')) {
+  if (
+    emotion.includes('contemplative') ||
+    emotion.includes('reflective') ||
+    emotion.includes('thoughtful')
+  ) {
     return '#64748B'; // Slate
   }
-  if (emotion.includes('curious') || emotion.includes('wondering') || emotion.includes('questioning')) {
+  if (
+    emotion.includes('curious') ||
+    emotion.includes('wondering') ||
+    emotion.includes('questioning')
+  ) {
     return '#7C3AED'; // Violet
   }
-  if (emotion.includes('determined') || emotion.includes('focused') || emotion.includes('motivated')) {
+  if (
+    emotion.includes('determined') ||
+    emotion.includes('focused') ||
+    emotion.includes('motivated')
+  ) {
     return '#059669'; // Green
   }
-  if (emotion.includes('nostalgic') || emotion.includes('reminiscent') || emotion.includes('wistful')) {
+  if (
+    emotion.includes('nostalgic') ||
+    emotion.includes('reminiscent') ||
+    emotion.includes('wistful')
+  ) {
     return '#D97706'; // Amber
   }
-  
+
   // Challenging emotions - cooler, more muted tones
-  if (emotion.includes('sad') || emotion.includes('melancholy') || emotion.includes('down')) {
+  if (
+    emotion.includes('sad') ||
+    emotion.includes('melancholy') ||
+    emotion.includes('down')
+  ) {
     return '#6366F1'; // Indigo
   }
-  if (emotion.includes('anxious') || emotion.includes('worried') || emotion.includes('nervous')) {
+  if (
+    emotion.includes('anxious') ||
+    emotion.includes('worried') ||
+    emotion.includes('nervous')
+  ) {
     return '#EF4444'; // Red
   }
-  if (emotion.includes('frustrated') || emotion.includes('annoyed') || emotion.includes('irritated')) {
+  if (
+    emotion.includes('frustrated') ||
+    emotion.includes('annoyed') ||
+    emotion.includes('irritated')
+  ) {
     return '#DC2626'; // Dark red
   }
-  if (emotion.includes('uncertain') || emotion.includes('confused') || emotion.includes('unsure')) {
+  if (
+    emotion.includes('uncertain') ||
+    emotion.includes('confused') ||
+    emotion.includes('unsure')
+  ) {
     return '#F59E0B'; // Amber
   }
-  if (emotion.includes('overwhelmed') || emotion.includes('stressed') || emotion.includes('pressured')) {
+  if (
+    emotion.includes('overwhelmed') ||
+    emotion.includes('stressed') ||
+    emotion.includes('pressured')
+  ) {
     return '#7C2D12'; // Brown
   }
-  if (emotion.includes('lonely') || emotion.includes('isolated') || emotion.includes('disconnected')) {
+  if (
+    emotion.includes('lonely') ||
+    emotion.includes('isolated') ||
+    emotion.includes('disconnected')
+  ) {
     return '#475569'; // Dark slate
   }
-  if (emotion.includes('tired') || emotion.includes('exhausted') || emotion.includes('drained')) {
+  if (
+    emotion.includes('tired') ||
+    emotion.includes('exhausted') ||
+    emotion.includes('drained')
+  ) {
     return '#6B7280'; // Gray
   }
-  
+
   // Default fallback color
   return '#64748B'; // Slate
 };
@@ -418,7 +490,9 @@ const validateAndNormalizeAnalysisData = (data: any): AnalysisData => {
     ? data.emotions.map((emotion: any) => ({
         name: String(emotion.name || 'Unknown'),
         percentage: Math.max(0, Number(emotion.percentage) || 0),
-        color: String(emotion.color || getEmotionColor(emotion.name || 'Unknown')),
+        color: String(
+          emotion.color || getEmotionColor(emotion.name || 'Unknown'),
+        ),
       }))
     : [];
 
@@ -480,11 +554,15 @@ export async function analyzeJournalEntryData(
     };
   }
 
-
-  const [onboardingError, onboardingData] = await safeAwait(getOnboardingData());
+  const [onboardingError, onboardingData] = await safeAwait(
+    storageService.getOnboardingData(),
+  );
 
   if (onboardingError) {
-    console.warn('Failed to load onboarding data for analysis:', onboardingError);
+    console.warn(
+      'Failed to load onboarding data for analysis:',
+      onboardingError,
+    );
   }
 
   const personalContext = buildPersonalizedContext(onboardingData || null);
@@ -589,46 +667,50 @@ const getFallbackAnalysisData = (): AnalysisData => {
       {
         name: 'Self-Reflection',
         count: 4,
-        breakdown: 'Your entry shows deep introspection and willingness to examine your thoughts and feelings.',
+        breakdown:
+          'Your entry shows deep introspection and willingness to examine your thoughts and feelings.',
         insights: [
           'You demonstrate strong self-awareness',
           "You're actively processing your experiences",
           'You show courage in facing difficult emotions',
         ],
-        emoji: '🤔'
+        emoji: '🤔',
       },
       {
         name: 'Daily Life',
         count: 3,
-        breakdown: "You're navigating the complexities of everyday experiences and finding meaning in routine moments.",
+        breakdown:
+          "You're navigating the complexities of everyday experiences and finding meaning in routine moments.",
         insights: [
           'You notice details in your daily experiences',
           'You seek meaning in ordinary moments',
           "You're building awareness of life patterns",
         ],
-        emoji: '📅'
+        emoji: '📅',
       },
       {
         name: 'Emotions',
         count: 3,
-        breakdown: 'Your emotional landscape is rich and varied, showing both vulnerability and strength.',
+        breakdown:
+          'Your emotional landscape is rich and varied, showing both vulnerability and strength.',
         insights: [
           'You acknowledge your feelings honestly',
           "You're developing emotional intelligence",
           'You show resilience in processing emotions',
         ],
-        emoji: '💭'
+        emoji: '💭',
       },
       {
         name: 'Relationships',
         count: 2,
-        breakdown: 'Your connections with others play an important role in your personal growth and well-being.',
+        breakdown:
+          'Your connections with others play an important role in your personal growth and well-being.',
         insights: [
           'You value meaningful connections',
           "You're learning about interpersonal dynamics",
           'You seek understanding in your relationships',
         ],
-        emoji: '❤️'
+        emoji: '❤️',
       },
     ],
     emotions: [

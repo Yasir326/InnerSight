@@ -21,10 +21,10 @@ import {
   type AnalysisData,
 } from '../services/ai';
 import {safeAwait} from '../utils/safeAwait';
-import {getAnalysisData, saveAnalysisData} from '../services/journalEntries';
 import {getUserName} from '../services/onboarding';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../navigation/AppNavigator';
+import { journalEntriesService } from '../services/journalEntries';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Analysis'>;
 
@@ -154,7 +154,6 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
   } | null>(null);
   const [showThemeModal, setShowThemeModal] = useState(false);
 
-
   const progress = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.timing(progress, {
@@ -229,14 +228,13 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
     }
   };
 
-
   useEffect(() => {
     if (skipAI && entryId) {
       // Load stored analysis data for existing entries
       const loadStoredData = async () => {
-        const [error, storedData] = await safeAwait(getAnalysisData(entryId));
+        const [error, storedData] = await safeAwait(journalEntriesService.getEntry(entryId));
 
-        if (error || !storedData.analysisData) {
+        if (error || !storedData?.analysisData) {
           console.error(
             'Error loading stored analysis data or no data exists:',
             error,
@@ -264,46 +262,50 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
                 {
                   name: 'Self-Reflection',
                   count: 4,
-                  breakdown: 'Your entry shows deep introspection and willingness to examine your thoughts and feelings.',
+                  breakdown:
+                    'Your entry shows deep introspection and willingness to examine your thoughts and feelings.',
                   insights: [
                     'You demonstrate strong self-awareness',
                     "You're actively processing your experiences",
                     'You show courage in facing difficult emotions',
                   ],
-                  emoji: '🤔'
+                  emoji: '🤔',
                 },
                 {
                   name: 'Daily Life',
                   count: 3,
-                  breakdown: "You're navigating the complexities of everyday experiences and finding meaning in routine moments.",
+                  breakdown:
+                    "You're navigating the complexities of everyday experiences and finding meaning in routine moments.",
                   insights: [
                     'You notice details in your daily experiences',
                     'You seek meaning in ordinary moments',
                     "You're building awareness of life patterns",
                   ],
-                  emoji: '📅'
+                  emoji: '📅',
                 },
                 {
                   name: 'Emotions',
                   count: 3,
-                  breakdown: 'Your emotional landscape is rich and varied, showing both vulnerability and strength.',
+                  breakdown:
+                    'Your emotional landscape is rich and varied, showing both vulnerability and strength.',
                   insights: [
                     'You acknowledge your feelings honestly',
                     "You're developing emotional intelligence",
                     'You show resilience in processing emotions',
                   ],
-                  emoji: '💭'
+                  emoji: '💭',
                 },
                 {
                   name: 'Relationships',
                   count: 2,
-                  breakdown: 'Your connections with others play an important role in your personal growth and well-being.',
+                  breakdown:
+                    'Your connections with others play an important role in your personal growth and well-being.',
                   insights: [
                     'You value meaningful connections',
                     "You're learning about interpersonal dynamics",
                     'You seek understanding in your relationships',
                   ],
-                  emoji: '❤️'
+                  emoji: '❤️',
                 },
               ],
               emotions: [
@@ -340,7 +342,11 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
           // Save the generated analysis data for future use
           if (!analysisError && !perspectiveError && !insightsError) {
             const [saveError] = await safeAwait(
-              saveAnalysisData(entryId, analysisData, perspective, insights),
+              journalEntriesService.updateEntry(entryId, {
+                analysisData,
+                alternativePerspective: perspective,
+                aiInsights: insights,
+              }),
             );
             if (saveError) {
               console.error('Error saving generated analysis data:', saveError);
@@ -380,46 +386,50 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
             {
               name: 'Self-Reflection',
               count: 4,
-              breakdown: 'Your entry shows deep introspection and willingness to examine your thoughts and feelings.',
+              breakdown:
+                'Your entry shows deep introspection and willingness to examine your thoughts and feelings.',
               insights: [
                 'You demonstrate strong self-awareness',
                 "You're actively processing your experiences",
                 'You show courage in facing difficult emotions',
               ],
-              emoji: '🤔'
+              emoji: '🤔',
             },
             {
               name: 'Daily Life',
               count: 3,
-              breakdown: "You're navigating the complexities of everyday experiences and finding meaning in routine moments.",
+              breakdown:
+                "You're navigating the complexities of everyday experiences and finding meaning in routine moments.",
               insights: [
                 'You notice details in your daily experiences',
                 'You seek meaning in ordinary moments',
                 "You're building awareness of life patterns",
               ],
-              emoji: '📅'
+              emoji: '📅',
             },
             {
               name: 'Emotions',
               count: 3,
-              breakdown: 'Your emotional landscape is rich and varied, showing both vulnerability and strength.',
+              breakdown:
+                'Your emotional landscape is rich and varied, showing both vulnerability and strength.',
               insights: [
                 'You acknowledge your feelings honestly',
                 "You're developing emotional intelligence",
                 'You show resilience in processing emotions',
               ],
-              emoji: '💭'
+              emoji: '💭',
             },
             {
               name: 'Relationships',
               count: 2,
-              breakdown: 'Your connections with others play an important role in your personal growth and well-being.',
+              breakdown:
+                'Your connections with others play an important role in your personal growth and well-being.',
               insights: [
                 'You value meaningful connections',
                 "You're learning about interpersonal dynamics",
                 'You seek understanding in your relationships',
               ],
-              emoji: '❤️'
+              emoji: '❤️',
             },
           ],
           emotions: [
@@ -515,12 +525,11 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
     ) {
       const saveData = async () => {
         const [error] = await safeAwait(
-          saveAnalysisData(
-            entryId,
+          journalEntriesService.updateEntry(entryId, {
             analysisData,
             alternativePerspective,
-            aiText,
-          ),
+            aiInsights: aiText,
+          }),
         );
 
         if (error) {
@@ -572,19 +581,37 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
   };
 
   // Helper function to personalize insights
-  const personalizeInsight = (insight: string, userName: string | null): string => {
+  const personalizeInsight = (
+    insight: string,
+    userName: string | null,
+  ): string => {
     if (!userName) return insight;
-    
-    // Check if insight already starts with "You" or similar personal pronouns
-    const startsWithYou = /^(You|Your)\s/i.test(insight);
-    
+
+    let personalizedInsight = insight;
+
+    // Handle patterns at the beginning of sentences
+    const startsWithYou = /^(You|Your)\s/i.test(personalizedInsight);
     if (startsWithYou) {
-      // Replace "You" with the user's name
-      return insight.replace(/^You\s/i, `${userName}, you `).replace(/^Your\s/i, `${userName}, your `);
+      personalizedInsight = personalizedInsight
+        .replace(/^You\s/i, `${userName}, you `)
+        .replace(/^Your\s/i, `${userName}, your `);
     } else {
-      // Add the user's name at the beginning for other insights
-      return `${userName}, ${insight.toLowerCase()}`;
+      personalizedInsight = personalizedInsight
+        .replace(/\bthe writer\b/gi, userName)
+        .replace(/\bthe person\b/gi, userName)
+        .replace(/\bthe individual\b/gi, userName)
+        .replace(/\bthe user\b/gi, userName)
+        .replace(/\bthe author\b/gi, userName)
+        .replace(/\bthe journaler\b/gi, userName)
+        .replace(/\bthis person\b/gi, userName)
+        .replace(/\bthis individual\b/gi, userName);
+
+      if (personalizedInsight === insight) {
+        personalizedInsight = `${userName}, ${insight.toLowerCase()}`;
+      }
     }
+
+    return personalizedInsight;
   };
 
   return (
@@ -744,7 +771,9 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
                   <View style={styles.insightsContainer}>
                     {parseAIInsights(aiText).map((insight, index) => (
                       <View key={index} style={styles.insightCard}>
-                        <Text style={styles.insightText}>{personalizeInsight(insight, userName)}</Text>
+                        <Text style={styles.insightText}>
+                          {personalizeInsight(insight, userName)}
+                        </Text>
                       </View>
                     ))}
                   </View>
@@ -777,25 +806,29 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
                 <View style={styles.modalSection}>
                   <Text style={styles.modalSectionTitle}>
                     {selectedTheme.emoji && (
-                      <Text style={styles.modalEmoji}>{selectedTheme.emoji} </Text>
+                      <Text style={styles.modalEmoji}>
+                        {selectedTheme.emoji}{' '}
+                      </Text>
                     )}
                     Overview
                   </Text>
                   <Text style={styles.modalBreakdown}>
-                    {userName 
+                    {userName
                       ? `${userName}, ${selectedTheme.breakdown.toLowerCase()}`
-                      : selectedTheme.breakdown
-                    }
+                      : selectedTheme.breakdown}
                   </Text>
                   <View style={styles.mentionsCard}>
                     <Text style={styles.mentionsText}>
-                      This theme appeared <Text style={styles.mentionsCount}>{selectedTheme.count}</Text> times in your entry, 
-                      {selectedTheme.count >= 4 
-                        ? ' showing it\'s a significant focus for you right now.'
+                      This theme appeared{' '}
+                      <Text style={styles.mentionsCount}>
+                        {selectedTheme.count}
+                      </Text>{' '}
+                      times in your entry,
+                      {selectedTheme.count >= 4
+                        ? " showing it's a significant focus for you right now."
                         : selectedTheme.count >= 2
-                        ? ' indicating it\'s moderately important in your current thoughts.'
-                        : ' suggesting it\'s emerging in your awareness.'
-                      }
+                        ? " indicating it's moderately important in your current thoughts."
+                        : " suggesting it's emerging in your awareness."}
                     </Text>
                   </View>
                 </View>
@@ -805,7 +838,9 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
                   {selectedTheme.insights.map((insight, index) => (
                     <View key={index} style={styles.insightItem}>
                       <View style={styles.insightBullet} />
-                      <Text style={styles.insightText}>{personalizeInsight(insight, userName)}</Text>
+                      <Text style={styles.insightText}>
+                        {personalizeInsight(insight, userName)}
+                      </Text>
                     </View>
                   ))}
                 </View>
@@ -816,10 +851,9 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
                   </Text>
                   <View style={styles.reflectionCard}>
                     <Text style={styles.reflectionText}>
-                      {userName 
+                      {userName
                         ? `${userName}, how does this theme show up in other areas of your life?`
-                        : 'How does this theme show up in other areas of your life?'
-                      }
+                        : 'How does this theme show up in other areas of your life?'}
                     </Text>
                   </View>
                   <View style={styles.reflectionCard}>
@@ -831,7 +865,9 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
                   {userName && (
                     <View style={styles.reflectionCard}>
                       <Text style={styles.reflectionText}>
-                        {userName}, what would you tell a friend who was experiencing similar thoughts about {selectedTheme.name.toLowerCase()}?
+                        {userName}, what would you tell a friend who was
+                        experiencing similar thoughts about{' '}
+                        {selectedTheme.name.toLowerCase()}?
                       </Text>
                     </View>
                   )}
