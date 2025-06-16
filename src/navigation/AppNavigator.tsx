@@ -22,6 +22,7 @@ import EntryDetailScreen from '../screens/EntryDetailScreen';
 import AnalysisScreen from '../screens/AnalysisScreen';
 import StatsScreen from '../screens/StatsScreen';
 import ResultsScreen from '../screens/ResultsScreen';
+import AccountScreen from '../screens/AccountScreen';
 
 // Services
 import {storageService} from '../services/storage';
@@ -57,6 +58,7 @@ export type RootStackParamList = {
   };
   Stats: undefined;
   Results: undefined;
+  Account: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -241,6 +243,11 @@ const AppNavigator: React.FC = () => {
         <Stack.Screen
           name="Results"
           component={ResultsScreen}
+          options={{gestureEnabled: true}}
+        />
+        <Stack.Screen
+          name="Account"
+          component={AccountScreen}
           options={{gestureEnabled: true}}
         />
       </Stack.Navigator>

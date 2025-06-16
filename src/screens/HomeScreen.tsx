@@ -14,14 +14,11 @@ import Svg, {Path} from 'react-native-svg';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../navigation/AppNavigator';
 import {useNavigation, useFocusEffect} from '@react-navigation/native';
-import {
-  journalEntriesService,
-  JournalEntry,
-} from '../services/journalEntries';
+import {journalEntriesService, JournalEntry} from '../services/journalEntries';
 import {safeAwait} from '../utils/safeAwait';
 import {getUserName} from '../services/onboarding';
 import {storageService} from '../services/storage';
-
+import {getMostCommonEmotion, getEmotionEmoji, type EmotionSummary} from '../services/emotionAnalytics';
 
 // Custom Icons
 const TrashIcon: React.FC<{size?: number; color?: string}> = ({
@@ -60,10 +57,20 @@ const CalendarIcon: React.FC<{size?: number; color?: string}> = ({
   </Svg>
 );
 
+const AccountIcon: React.FC<{size?: number; color?: string}> = ({
+  size = 24,
+  color = '#6B7280',
+}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+    <Path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z" />
+  </Svg>
+);
+
 const NotionHomeScreen: React.FC = () => {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState<string | null>(null);
+  const [mostCommonEmotion, setMostCommonEmotion] = useState<EmotionSummary | null>(null);
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList, 'Home'>>();
 
@@ -86,6 +93,14 @@ const NotionHomeScreen: React.FC = () => {
           console.error('Error loading user name:', nameError);
         } else {
           setUserName(name);
+        }
+
+        // Load most common emotion
+        const [emotionError, emotion] = await safeAwait(getMostCommonEmotion());
+        if (emotionError) {
+          console.error('Error loading emotion analytics:', emotionError);
+        } else {
+          setMostCommonEmotion(emotion);
         }
 
         setLoading(false);
@@ -260,13 +275,23 @@ const NotionHomeScreen: React.FC = () => {
 
   const renderHeader = () => (
     <View style={styles.headerContent}>
-      <TouchableOpacity
-        onLongPress={handleResetOnboarding}
-        delayLongPress={2000}
-        activeOpacity={1}>
-        <Text style={styles.welcomeMessage}>{getWelcomeMessage()}</Text>
-        <Text style={styles.welcomeSubtitle}>What's on your mind?</Text>
-      </TouchableOpacity>
+      <View style={styles.headerTop}>
+        <TouchableOpacity
+          onLongPress={handleResetOnboarding}
+          delayLongPress={2000}
+          activeOpacity={1}
+          style={styles.welcomeContainer}>
+          <Text style={styles.welcomeMessage}>{getWelcomeMessage()}</Text>
+          <Text style={styles.welcomeSubtitle}>What's on your mind?</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.accountButton}
+          onPress={() => navigation.navigate('Account')}
+          activeOpacity={0.7}>
+          <AccountIcon size={24} color="#6B7280" />
+        </TouchableOpacity>
+      </View>
 
       {entries.length > 0 && (
         <View style={styles.statsContainer}>
@@ -275,6 +300,15 @@ const NotionHomeScreen: React.FC = () => {
             <Text style={styles.statLabel}>
               {entries.length === 1 ? 'Entry' : 'Entries'}
             </Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>
+              {mostCommonEmotion 
+                ? `${getEmotionEmoji(mostCommonEmotion.name)} ${mostCommonEmotion.name}`
+                : '💭 N/A'
+              }
+            </Text>
+            <Text style={styles.statLabel}>Most Common Emotion</Text>
           </View>
         </View>
       )}
@@ -333,6 +367,14 @@ const styles = StyleSheet.create({
   headerContent: {
     marginBottom: 32,
   },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  welcomeContainer: {
+    flex: 1,
+  },
   welcomeMessage: {
     fontSize: 28,
     fontWeight: '700',
@@ -346,36 +388,35 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
+  accountButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#F9FAFB',
+  },
   statsContainer: {
     flexDirection: 'row',
-    gap: 16,
+    justifyContent: 'space-around',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    marginHorizontal: 20,
+    marginBottom: 20,
   },
   statItem: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    flex: 1,
   },
   statNumber: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#111827',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 4,
   },
   statLabel: {
     fontSize: 12,
     color: '#6B7280',
-    marginTop: 2,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    textAlign: 'center',
   },
   entryCard: {
     backgroundColor: '#FFFFFF',
