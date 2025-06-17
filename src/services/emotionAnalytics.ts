@@ -20,7 +20,7 @@ export interface EmotionAnalytics {
  */
 export const analyzeUserEmotions = async (): Promise<EmotionAnalytics> => {
   const [error, entries] = await safeAwait(journalEntriesService.getEntries());
-  
+
   if (error || !entries || entries.length === 0) {
     console.error('Error loading entries for emotion analysis:', error);
     return {
@@ -32,7 +32,9 @@ export const analyzeUserEmotions = async (): Promise<EmotionAnalytics> => {
 
   // Filter entries that have analysis data with emotions
   const entriesWithEmotions = entries.filter(
-    entry => entry.analysisData?.emotions && Array.isArray(entry.analysisData.emotions)
+    entry =>
+      entry.analysisData?.emotions &&
+      Array.isArray(entry.analysisData.emotions),
   );
 
   if (entriesWithEmotions.length === 0) {
@@ -44,17 +46,20 @@ export const analyzeUserEmotions = async (): Promise<EmotionAnalytics> => {
   }
 
   // Aggregate emotions across all entries
-  const emotionMap = new Map<string, {
-    totalPercentage: number;
-    occurrences: number;
-    color: string;
-  }>();
+  const emotionMap = new Map<
+    string,
+    {
+      totalPercentage: number;
+      occurrences: number;
+      color: string;
+    }
+  >();
 
   entriesWithEmotions.forEach(entry => {
     entry.analysisData.emotions.forEach((emotion: any) => {
       const emotionName = emotion.name.toLowerCase();
       const existing = emotionMap.get(emotionName);
-      
+
       if (existing) {
         existing.totalPercentage += emotion.percentage;
         existing.occurrences += 1;
@@ -80,7 +85,8 @@ export const analyzeUserEmotions = async (): Promise<EmotionAnalytics> => {
     .sort((a, b) => b.totalPercentage - a.totalPercentage);
 
   // Find most common emotion (highest total percentage across all entries)
-  const mostCommonEmotion = emotionBreakdown.length > 0 ? emotionBreakdown[0] : null;
+  const mostCommonEmotion =
+    emotionBreakdown.length > 0 ? emotionBreakdown[0] : null;
 
   return {
     mostCommonEmotion,
@@ -92,10 +98,11 @@ export const analyzeUserEmotions = async (): Promise<EmotionAnalytics> => {
 /**
  * Gets the most common emotion for quick display
  */
-export const getMostCommonEmotion = async (): Promise<EmotionSummary | null> => {
-  const analytics = await analyzeUserEmotions();
-  return analytics.mostCommonEmotion;
-};
+export const getMostCommonEmotion =
+  async (): Promise<EmotionSummary | null> => {
+    const analytics = await analyzeUserEmotions();
+    return analytics.mostCommonEmotion;
+  };
 
 /**
  * Helper function to capitalize first letter
@@ -109,7 +116,7 @@ const capitalizeFirstLetter = (str: string): string => {
  */
 export const getEmotionEmoji = (emotionName: string): string => {
   const emotion = emotionName.toLowerCase();
-  
+
   const emojiMap: Record<string, string> = {
     happy: '😊',
     joy: '😄',
@@ -131,7 +138,7 @@ export const getEmotionEmoji = (emotionName: string): string => {
     creative: '🎨',
     focused: '🎯',
     determined: '💪',
-    
+
     sad: '😢',
     disappointed: '😞',
     frustrated: '😤',
@@ -148,7 +155,7 @@ export const getEmotionEmoji = (emotionName: string): string => {
     confused: '😕',
     uncertain: '🤔',
     doubtful: '🤔',
-    
+
     contemplative: '🤔',
     reflective: '💭',
     thoughtful: '💭',
@@ -157,7 +164,7 @@ export const getEmotionEmoji = (emotionName: string): string => {
     introspective: '🧘',
     mindful: '🧘',
     aware: '👁️',
-    
+
     love: '❤️',
     loved: '❤️',
     caring: '💕',
@@ -165,15 +172,14 @@ export const getEmotionEmoji = (emotionName: string): string => {
     empathetic: '🤗',
     connected: '🤝',
     supported: '🤗',
-    
+
     surprised: '😲',
     amazed: '😲',
     shocked: '😱',
     impressed: '👏',
-    
-    // Default fallback
+
     default: '💭',
   };
-  
+
   return emojiMap[emotion] || emojiMap.default;
-}; 
+};

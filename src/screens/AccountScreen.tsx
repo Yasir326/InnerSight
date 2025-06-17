@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
+  Platform,
 } from 'react-native';
 import Svg, {Path} from 'react-native-svg';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
@@ -16,47 +17,13 @@ import type {RootStackParamList} from '../navigation/AppNavigator';
 import {useNavigation} from '@react-navigation/native';
 import {authHelpers, supabase, ensureUserProfile} from '../lib/supabase';
 import {safeAwait} from '../utils/safeAwait';
+import {journalEntriesService} from '../services/journalEntries';
+import {analyzeUserStreaks} from '../services/streakAnalytics';
 
 // Custom Icons
-const UserIcon: React.FC<{size?: number; color?: string}> = ({
-  size = 24,
-  color = '#6B7280',
-}) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
-    <Path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z" />
-  </Svg>
-);
-
-const EmailIcon: React.FC<{size?: number; color?: string}> = ({
-  size = 24,
-  color = '#6B7280',
-}) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
-    <Path d="M20,8L12,13L4,8V6L12,11L20,6M20,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V6C22,4.89 21.11,4 20,4Z" />
-  </Svg>
-);
-
-const LogoutIcon: React.FC<{size?: number; color?: string}> = ({
-  size = 24,
-  color = '#EF4444',
-}) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
-    <Path d="M16,17V14H9V10H16V7L21,12L16,17M14,2A2,2 0 0,1 16,4V6H14V4H5V20H14V18H16V20A2,2 0 0,1 14,22H5A2,2 0 0,1 3,20V4A2,2 0 0,1 5,2H14Z" />
-  </Svg>
-);
-
-const EditIcon: React.FC<{size?: number; color?: string}> = ({
-  size = 20,
-  color = '#6B7280',
-}) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
-    <Path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z" />
-  </Svg>
-);
-
 const BackIcon: React.FC<{size?: number; color?: string}> = ({
   size = 24,
-  color = '#374151',
+  color = '#000000',
 }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
     <Path d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z" />
@@ -65,7 +32,7 @@ const BackIcon: React.FC<{size?: number; color?: string}> = ({
 
 const DeleteIcon: React.FC<{size?: number; color?: string}> = ({
   size = 24,
-  color = '#DC2626',
+  color = '#666666',
 }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
     <Path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" />
@@ -80,9 +47,20 @@ interface UserProfile {
   updated_at: string;
 }
 
+interface UserStats {
+  totalEntries: number;
+  currentStreak: number;
+  totalTimeEstimate: string;
+}
+
 const AccountScreen: React.FC = () => {
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [userStats, setUserStats] = useState<UserStats>({
+    totalEntries: 0,
+    currentStreak: 0,
+    totalTimeEstimate: '0h',
+  });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -91,11 +69,28 @@ const AccountScreen: React.FC = () => {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
-  useEffect(() => {
-    loadUserData();
+  const loadUserStats = useCallback(async () => {
+    // Get journal entries count
+    const [, entries] = await safeAwait(journalEntriesService.getEntries());
+    const totalEntries = entries?.length || 0;
+
+    // Get streak data
+    const [, streakData] = await safeAwait(analyzeUserStreaks());
+    const currentStreak = streakData?.currentStreak || 0;
+
+    // Estimate total time (rough calculation: 5 minutes per entry)
+    const totalMinutes = totalEntries * 5;
+    const totalHours = Math.round(totalMinutes / 60 * 10) / 10;
+    const totalTimeEstimate = totalHours >= 1 ? `${totalHours}h` : `${totalMinutes}m`;
+
+    setUserStats({
+      totalEntries,
+      currentStreak,
+      totalTimeEstimate,
+    });
   }, []);
 
-  const loadUserData = async () => {
+  const loadUserData = useCallback(async () => {
     setLoading(true);
 
     // Get current user
@@ -117,8 +112,15 @@ const AccountScreen: React.FC = () => {
       setEditedName(profileData?.name || '');
     }
 
+    // Load user stats
+    await loadUserStats();
+
     setLoading(false);
-  };
+  }, [loadUserStats]);
+
+  useEffect(() => {
+    loadUserData();
+  }, [loadUserData]);
 
   const handleSaveProfile = async () => {
     if (!profile || !user) return;
@@ -186,7 +188,7 @@ const AccountScreen: React.FC = () => {
             // Second confirmation
             Alert.alert(
               'Final Confirmation',
-              'This is your final warning. Deleting your account will permanently remove all your data and cannot be reversed. Type "DELETE" to confirm.',
+              'This is your final warning. Deleting your account will permanently remove all your data and cannot be reversed.',
               [
                 {
                   text: 'Cancel',
@@ -211,7 +213,7 @@ const AccountScreen: React.FC = () => {
     setSaving(true);
 
     try {
-      // First, delete all user data from our tables
+      // Delete all user data from our tables
       console.log('🗑️ Deleting user profile and related data...');
 
       // Delete journal entries
@@ -222,6 +224,16 @@ const AccountScreen: React.FC = () => {
 
       if (entriesError) {
         console.error('Error deleting journal entries:', entriesError);
+      }
+
+      // Delete streak data
+      const {error: streaksError} = await supabase
+        .from('user_streaks')
+        .delete()
+        .eq('user_id', user.id);
+
+      if (streaksError) {
+        console.error('Error deleting streak data:', streaksError);
       }
 
       // Delete onboarding data
@@ -244,19 +256,14 @@ const AccountScreen: React.FC = () => {
         console.error('Error deleting profile:', profileError);
       }
 
-      // Note: For complete account deletion, you would typically need to call a server-side function
-      // that has admin privileges to delete the auth user. For now, we'll just delete the user data
-      // and sign them out. The auth user will remain but with no associated data.
-
       console.log('✅ User data deleted successfully');
       Alert.alert(
         'Account Data Deleted',
-        'Your account data has been permanently deleted. You will now be signed out. Note: Your login credentials remain active - contact support for complete account removal.',
+        'Your account data has been permanently deleted. You will now be signed out.',
         [
           {
             text: 'OK',
             onPress: async () => {
-              // Sign out to clear local session
               await authHelpers.signOut();
             },
           },
@@ -273,6 +280,14 @@ const AccountScreen: React.FC = () => {
     setSaving(false);
   };
 
+  const handleExportData = () => {
+    Alert.alert(
+      'Export Data',
+      'This feature will allow you to download all your journal entries and data. Coming soon!',
+      [{text: 'OK'}],
+    );
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -285,7 +300,7 @@ const AccountScreen: React.FC = () => {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#3B82F6" />
+          <ActivityIndicator size="large" color="#000000" />
           <Text style={styles.loadingText}>Loading account...</Text>
         </View>
       </SafeAreaView>
@@ -294,135 +309,200 @@ const AccountScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}>
-            <BackIcon size={24} color="#374151" />
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <BackIcon size={24} color="#000000" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Account</Text>
-          <View style={styles.headerSpacer} />
+          <View>
+            <Text style={styles.headerTitle}>Account Settings</Text>
+            <Text style={styles.headerSubtitle}>Manage your profile</Text>
+          </View>
+          <TouchableOpacity style={styles.menuButton}>
+            <Text style={styles.menuDots}>⋯</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Profile Section */}
-        <View style={styles.section}>
-          <View style={styles.profileHeader}>
-            <View style={styles.avatarContainer}>
-              <UserIcon size={32} color="#FFFFFF" />
-            </View>
-            <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>
-                {profile?.name || 'Anonymous User'}
-              </Text>
-              <Text style={styles.profileEmail}>{user?.email}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Account Details */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Profile Information</Text>
-
-          {/* Name Field */}
-          <View style={styles.fieldContainer}>
-            <View style={styles.fieldHeader}>
-              <View style={styles.fieldLabelContainer}>
-                <UserIcon size={20} color="#6B7280" />
-                <Text style={styles.fieldLabel}>Display Name</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.editButton}
-                onPress={() => {
-                  if (editing) {
-                    setEditedName(profile?.name || '');
-                    setEditing(false);
-                  } else {
-                    setEditing(true);
-                  }
-                }}>
-                <EditIcon size={16} color="#6B7280" />
-                <Text style={styles.editButtonText}>
-                  {editing ? 'Cancel' : 'Edit'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {editing ? (
-              <View style={styles.editContainer}>
-                <TextInput
-                  style={styles.textInput}
-                  value={editedName}
-                  onChangeText={setEditedName}
-                  placeholder="Enter your name"
-                  placeholderTextColor="#9CA3AF"
-                />
-                <TouchableOpacity
-                  style={[
-                    styles.saveButton,
-                    saving && styles.saveButtonDisabled,
-                  ]}
-                  onPress={handleSaveProfile}
-                  disabled={saving}>
-                  {saving ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.saveButtonText}>Save</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <Text style={styles.fieldValue}>
-                {profile?.name || 'Not set'}
-              </Text>
-            )}
-          </View>
-
-          {/* Email Field */}
-          <View style={styles.fieldContainer}>
-            <View style={styles.fieldLabelContainer}>
-              <EmailIcon size={20} color="#6B7280" />
-              <Text style={styles.fieldLabel}>Email</Text>
-            </View>
-            <Text style={styles.fieldValue}>{user?.email}</Text>
-            <Text style={styles.fieldNote}>Email cannot be changed</Text>
-          </View>
-
-          {/* Account Created */}
-          <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>Member Since</Text>
-            <Text style={styles.fieldValue}>
-              {user?.created_at ? formatDate(user.created_at) : 'Unknown'}
+        <View style={styles.profileSection}>
+          <View style={styles.avatarContainer}>
+            <Text style={styles.avatarText}>
+              {profile?.name ? profile.name.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase() || 'U'}
             </Text>
           </View>
+          <View style={styles.profileInfo}>
+            <Text style={styles.profileName}>{profile?.name || 'Anonymous User'}</Text>
+            <Text style={styles.profileEmail}>{user?.email || 'Personal Journal'}</Text>
+          </View>
         </View>
 
-        {/* Actions Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Actions</Text>
+        {/* Stats Cards */}
+        <View style={styles.statsSection}>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{userStats.totalEntries}</Text>
+            <Text style={styles.statLabel}>Entries</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{userStats.currentStreak}</Text>
+            <Text style={styles.statLabel}>Day Streak</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{userStats.totalTimeEstimate}</Text>
+            <Text style={styles.statLabel}>Total Time</Text>
+          </View>
+        </View>
 
+        {/* Profile Settings */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>PROFILE SETTINGS</Text>
+          </View>
+
+          <View style={styles.settingItem}>
+            <View style={styles.settingIcon}>
+              <Text style={styles.settingEmoji}>👤</Text>
+            </View>
+            <View style={styles.settingContent}>
+              <Text style={styles.settingTitle}>Display Name</Text>
+              {editing ? (
+                <View style={styles.editContainer}>
+                  <TextInput
+                    style={styles.textInput}
+                    value={editedName}
+                    onChangeText={setEditedName}
+                    placeholder="Enter your name"
+                    placeholderTextColor="#9CA3AF"
+                  />
+                  <TouchableOpacity
+                    style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+                    onPress={handleSaveProfile}
+                    disabled={saving}>
+                    {saving ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Text style={styles.saveButtonText}>Save</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <Text style={styles.settingValue}>{profile?.name || 'Not set'}</Text>
+              )}
+            </View>
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={() => {
+                if (editing) {
+                  setEditedName(profile?.name || '');
+                  setEditing(false);
+                } else {
+                  setEditing(true);
+                }
+              }}>
+              <Text style={styles.editButtonText}>{editing ? 'Cancel' : 'Edit'}</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.settingItem}>
+            <View style={styles.settingIcon}>
+              <Text style={styles.settingEmoji}>📧</Text>
+            </View>
+            <View style={styles.settingContent}>
+              <Text style={styles.settingTitle}>Email</Text>
+              <Text style={styles.settingValue}>{user?.email}</Text>
+            </View>
+          </View>
+
+          <View style={styles.settingItem}>
+            <View style={styles.settingIcon}>
+              <Text style={styles.settingEmoji}>📅</Text>
+            </View>
+            <View style={styles.settingContent}>
+              <Text style={styles.settingTitle}>Member Since</Text>
+              <Text style={styles.settingValue}>
+                {user?.created_at ? formatDate(user.created_at) : 'Unknown'}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.settingItem}>
+            <View style={styles.settingIcon}>
+              <Text style={styles.settingEmoji}>🔒</Text>
+            </View>
+            <View style={styles.settingContent}>
+              <Text style={styles.settingTitle}>Privacy</Text>
+              <Text style={styles.settingValue}>All entries are private</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* App Settings */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>APP SETTINGS</Text>
+          </View>
+
+          <TouchableOpacity style={styles.settingItem}>
+            <View style={styles.settingIcon}>
+              <Text style={styles.settingEmoji}>🔔</Text>
+            </View>
+            <View style={styles.settingContent}>
+              <Text style={styles.settingTitle}>Notifications</Text>
+              <Text style={styles.settingValue}>Coming soon</Text>
+            </View>
+            <Text style={styles.chevron}>›</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.settingItem}>
+            <View style={styles.settingIcon}>
+              <Text style={styles.settingEmoji}>📱</Text>
+            </View>
+            <View style={styles.settingContent}>
+              <Text style={styles.settingTitle}>App Theme</Text>
+              <Text style={styles.settingValue}>Light mode</Text>
+            </View>
+            <Text style={styles.chevron}>›</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.settingItem} onPress={handleExportData}>
+            <View style={styles.settingIcon}>
+              <Text style={styles.settingEmoji}>💾</Text>
+            </View>
+            <View style={styles.settingContent}>
+              <Text style={styles.settingTitle}>Export Data</Text>
+              <Text style={styles.settingValue}>Download your journal</Text>
+            </View>
+            <Text style={styles.chevron}>›</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Actions */}
+        <View style={styles.section}>
           <TouchableOpacity style={styles.actionButton} onPress={handleSignOut}>
-            <LogoutIcon size={24} color="#EF4444" />
-            <Text style={styles.actionButtonTextDanger}>Sign Out</Text>
+            <View style={styles.actionIcon}>
+              <Text style={styles.actionEmoji}>🚪</Text>
+            </View>
+            <Text style={styles.actionText}>Sign Out</Text>
           </TouchableOpacity>
         </View>
 
         {/* Danger Zone */}
         <View style={styles.section}>
-          <Text style={styles.dangerSectionTitle}>Danger Zone</Text>
-          <Text style={styles.dangerSectionSubtitle}>
-            These actions are irreversible. Please proceed with caution.
-          </Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.dangerSectionTitle}>DANGER ZONE</Text>
+            <Text style={styles.dangerSectionSubtitle}>
+              These actions are irreversible. Please proceed with caution.
+            </Text>
+          </View>
 
           <TouchableOpacity
-            style={[styles.actionButton, styles.dangerActionButton]}
+            style={styles.dangerActionButton}
             onPress={handleDeleteAccount}
             disabled={saving}>
-            <DeleteIcon size={24} color="#DC2626" />
-            <Text style={styles.dangerActionButtonText}>
+            <View style={styles.dangerActionIcon}>
+              <DeleteIcon size={18} color="#666666" />
+            </View>
+            <Text style={styles.dangerActionText}>
               {saving ? 'Deleting...' : 'Delete Account'}
             </Text>
             {saving && (
@@ -434,6 +514,12 @@ const AccountScreen: React.FC = () => {
             )}
           </TouchableOpacity>
         </View>
+
+        {/* Footer */}
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>InnerSight Journal v1.0.0</Text>
+          <Text style={styles.footerSubtext}>Made with ❤️ for mindful reflection</Text>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -442,7 +528,7 @@ const AccountScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FFFFFF',
   },
   scrollView: {
     flex: 1,
@@ -455,55 +541,64 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#6B7280',
+    color: '#666666',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    paddingTop: 20,
+    paddingBottom: 24,
+    backgroundColor: '#F8F8F8',
   },
   backButton: {
     padding: 8,
-    marginLeft: -8,
   },
   headerTitle: {
-    flex: 1,
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: '600',
-    color: '#111827',
-    textAlign: 'center',
+    color: '#000000',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
-  headerSpacer: {
-    width: 40,
+  headerSubtitle: {
+    fontSize: 14,
+    color: '#666666',
+    marginTop: 2,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
-  section: {
-    backgroundColor: '#FFFFFF',
-    marginTop: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 20,
+  menuButton: {
+    padding: 8,
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 16,
+  menuDots: {
+    fontSize: 20,
+    color: '#666666',
   },
-  profileHeader: {
+  profileSection: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 24,
+    backgroundColor: '#FFFFFF',
+    marginBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
   },
   avatarContainer: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#000000',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
+  },
+  avatarText: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
   profileInfo: {
     flex: 1,
@@ -511,75 +606,135 @@ const styles = StyleSheet.create({
   profileName: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#111827',
+    color: '#000000',
     marginBottom: 4,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
   profileEmail: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#666666',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
-  fieldContainer: {
-    marginBottom: 20,
-  },
-  fieldHeader: {
+  statsSection: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
     marginBottom: 8,
+    gap: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
   },
-  fieldLabelContainer: {
+  statCard: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 16,
+    backgroundColor: '#F8F8F8',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  statNumber: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#000000',
+    marginBottom: 4,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#666666',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+  },
+  section: {
+    backgroundColor: '#FFFFFF',
+    marginBottom: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  sectionHeader: {
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666666',
+    letterSpacing: 0.5,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+  },
+  settingItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: 12,
   },
-  fieldLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#374151',
-    marginLeft: 8,
+  settingIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: '#F8F8F8',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
   },
-  fieldValue: {
+  settingEmoji: {
+    fontSize: 18,
+  },
+  settingContent: {
+    flex: 1,
+  },
+  settingTitle: {
     fontSize: 16,
-    color: '#111827',
-    marginTop: 4,
+    fontWeight: '500',
+    color: '#000000',
+    marginBottom: 2,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
-  fieldNote: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    marginTop: 4,
+  settingValue: {
+    fontSize: 14,
+    color: '#666666',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
   editButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: '#F8F8F8',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
   },
   editButtonText: {
     fontSize: 14,
-    color: '#6B7280',
-    marginLeft: 4,
+    color: '#000000',
+    fontWeight: '500',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
   editContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 8,
+    gap: 8,
   },
   textInput: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: '#E0E0E0',
     borderRadius: 8,
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 16,
-    color: '#111827',
+    paddingVertical: 8,
+    fontSize: 14,
+    color: '#000000',
     backgroundColor: '#FFFFFF',
-    marginRight: 12,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
   saveButton: {
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#000000',
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
+    paddingVertical: 8,
+    borderRadius: 6,
     minWidth: 60,
     alignItems: 'center',
   },
@@ -590,47 +745,97 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '500',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+  },
+  chevron: {
+    fontSize: 18,
+    color: '#999999',
+    marginLeft: 8,
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 16,
-    paddingHorizontal: 16,
-    backgroundColor: '#FEF2F2',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#FECACA',
   },
-  actionButtonTextDanger: {
+  actionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: '#F8F8F8',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  actionEmoji: {
+    fontSize: 18,
+  },
+  actionText: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#EF4444',
-    marginLeft: 12,
+    color: '#666666',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
   dangerSectionTitle: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '600',
-    color: '#111827',
-    marginBottom: 8,
+    color: '#000000',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
   dangerSectionSubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 16,
+    fontSize: 12,
+    color: '#666666',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
   dangerActionButton: {
-    backgroundColor: '#FEF2F2',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    backgroundColor: '#F8F8F8',
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#FECACA',
+    borderColor: '#E0E0E0',
+    marginTop: 12,
   },
-  dangerActionButtonText: {
+  dangerActionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  dangerActionText: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#EF4444',
-    marginLeft: 12,
+    color: '#666666',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
   deleteSpinner: {
     marginLeft: 12,
+  },
+  footer: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 20,
+  },
+  footerText: {
+    fontSize: 14,
+    color: '#666666',
+    marginBottom: 4,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+  },
+  footerSubtext: {
+    fontSize: 12,
+    color: '#999999',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
 });
 

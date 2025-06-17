@@ -15,6 +15,7 @@ import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../../navigation/AppNavigator';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {safeAwait} from '../../utils/safeAwait';
+import {storageService} from '../../services/storage';
 
 const USER_NAME_KEY = '@journal_user_name';
 
@@ -46,29 +47,54 @@ const OnboardingNameScreen: React.FC<Props> = ({navigation}) => {
 
   const handleContinue = async () => {
     if (canContinue) {
-      // Save the name to storage
-      const [error] = await safeAwait(
-        AsyncStorage.setItem(USER_NAME_KEY, name.trim())
+      console.log('💾 Saving user name:', name.trim());
+
+      // Save the name to AsyncStorage for temporary storage during onboarding
+      const [asyncError] = await safeAwait(
+        AsyncStorage.setItem(USER_NAME_KEY, name.trim()),
       );
-      
-      if (error) {
-        console.error('Error saving user name:', error);
+
+      if (asyncError) {
+        console.error('Error saving user name to AsyncStorage:', asyncError);
       }
-      
+
+      // Also save to Supabase profile immediately
+      try {
+        const profileSuccess = await storageService.updateUserProfile({
+          name: name.trim(),
+        });
+
+        if (profileSuccess) {
+          console.log('✅ User name saved to profile successfully');
+        } else {
+          console.warn(
+            '⚠️ Failed to save user name to profile, but continuing...',
+          );
+        }
+      } catch (error) {
+        console.error('Error saving user name to profile:', error);
+        // Don't block the user from continuing
+      }
+
       navigation.navigate('OnboardingGoals');
     }
   };
 
   const handleSkip = async () => {
+    console.log('⏭️ Skipping name entry');
+
     // Save empty name or default when skipping
-    const [error] = await safeAwait(
-      AsyncStorage.setItem(USER_NAME_KEY, '')
+    const [asyncError] = await safeAwait(
+      AsyncStorage.setItem(USER_NAME_KEY, ''),
     );
-    
-    if (error) {
-      console.error('Error saving empty user name:', error);
+
+    if (asyncError) {
+      console.error(
+        'Error saving empty user name to AsyncStorage:',
+        asyncError,
+      );
     }
-    
+
     navigation.navigate('OnboardingGoals');
   };
 
@@ -126,9 +152,7 @@ const OnboardingNameScreen: React.FC<Props> = ({navigation}) => {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.skipButton}
-            onPress={handleSkip}>
+          <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
             <Text style={styles.skipButtonText}>Skip for now</Text>
           </TouchableOpacity>
         </Animated.View>

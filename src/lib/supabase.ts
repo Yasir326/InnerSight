@@ -19,7 +19,7 @@ export const supabase = createClient(
       persistSession: true,
       detectSessionInUrl: false,
     },
-  }
+  },
 );
 
 export const createSessionFromUrl = async (url: string) => {
@@ -54,6 +54,7 @@ export const TABLES = {
   PROFILES: 'profiles',
   JOURNAL_ENTRIES: 'journal_entries',
   ONBOARDING_DATA: 'onboarding_data',
+  USER_STREAKS: 'user_streaks',
 } as const;
 
 // Database types
@@ -93,6 +94,19 @@ export interface OnboardingData {
   updated_at: string;
 }
 
+export interface UserStreak {
+  id: string;
+  user_id: string;
+  current_streak: number;
+  longest_streak: number;
+  total_days_with_entries: number;
+  streak_percentage: number;
+  last_entry_date: string | null;
+  streak_updated_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export const authHelpers = {
   signUp: async (email: string, password: string, name?: string) => {
     console.log('🚀 Starting signUp request...');
@@ -101,7 +115,7 @@ export const authHelpers = {
     console.log('- Name:', name);
     console.log('- Supabase URL:', EXPO_PUBLIC_SUPABASE_URL);
     console.log('- Supabase Key exists:', !!EXPO_PUBLIC_SUPABASE_ANON_KEY);
-    
+
     try {
       console.log('📡 Making Supabase auth.signUp call...');
       const response = await supabase.auth.signUp({
@@ -113,14 +127,16 @@ export const authHelpers = {
           },
         },
       });
-      
+
       console.log('📝 Raw Supabase response:', {
         hasData: !!response.data,
         hasError: !!response.error,
         errorMessage: response.error?.message,
-        userData: response.data?.user ? 'User object present' : 'No user object',
+        userData: response.data?.user
+          ? 'User object present'
+          : 'No user object',
       });
-      
+
       return {data: response.data, error: response.error};
     } catch (error) {
       console.error('💥 Network/Exception error in signUp:', error);
@@ -190,11 +206,16 @@ export const authHelpers = {
     try {
       const result = await authHelpers.getCurrentUser();
       if (result.error) {
-        const errorMessage = result.error && typeof result.error === 'object' && 'message' in result.error 
-          ? (result.error as any).message 
-          : '';
-        if (errorMessage.includes('Auth session missing') || 
-            errorMessage.includes('session_not_found')) {
+        const errorMessage =
+          result.error &&
+          typeof result.error === 'object' &&
+          'message' in result.error
+            ? (result.error as any).message
+            : '';
+        if (
+          errorMessage.includes('Auth session missing') ||
+          errorMessage.includes('session_not_found')
+        ) {
           console.log('ℹ️ No active session found (user not logged in)');
           return false;
         }
@@ -202,7 +223,10 @@ export const authHelpers = {
         return false;
       }
       const isAuth = !!result.user;
-      console.log('✅ Authentication check complete:', isAuth ? 'User authenticated' : 'No user session');
+      console.log(
+        '✅ Authentication check complete:',
+        isAuth ? 'User authenticated' : 'No user session',
+      );
       return isAuth;
     } catch (error) {
       console.error('❌ Authentication check failed:', error);

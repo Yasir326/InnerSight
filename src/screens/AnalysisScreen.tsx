@@ -13,7 +13,6 @@ import {
   TouchableOpacity,
   Modal,
 } from 'react-native';
-import Svg, {Path} from 'react-native-svg';
 import {
   analyseJournalEntry,
   analyzeJournalEntryData,
@@ -25,101 +24,18 @@ import {getUserName} from '../services/onboarding';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../navigation/AppNavigator';
 import { journalEntriesService } from '../services/journalEntries';
+import { Path } from 'react-native-svg';
+import Svg from 'react-native-svg';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Analysis'>;
 
-// Icon Components
-const BrainIcon: React.FC<{size?: number; color?: string}> = ({
-  size = 16,
-  color = '#6B7280',
-}) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Path
-      d="M9.5 2A2.5 2.5 0 0 0 7 4.5v15A2.5 2.5 0 0 0 9.5 22h5a2.5 2.5 0 0 0 2.5-2.5v-15A2.5 2.5 0 0 0 14.5 2h-5Z"
-      stroke={color}
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <Path
-      d="M12 6v12M9 9h6M9 15h6"
-      stroke={color}
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </Svg>
-);
-
-const HeartIcon: React.FC<{size?: number; color?: string}> = ({
-  size = 16,
-  color = '#6B7280',
-}) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Path
-      d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
-      stroke={color}
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </Svg>
-);
-
-const LightbulbIcon: React.FC<{size?: number; color?: string}> = ({
-  size = 16,
-  color = '#6B7280',
-}) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Path
-      d="M9 21h6M12 3a6 6 0 0 0-6 6c0 1 .2 2 .6 2.8L9 15h6l2.4-3.2c.4-.8.6-1.8.6-2.8a6 6 0 0 0-6-6Z"
-      stroke={color}
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </Svg>
-);
-
-const TrendingUpIcon: React.FC<{size?: number; color?: string}> = ({
-  size = 16,
-  color = '#6B7280',
-}) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Path
-      d="M22 7 13.5 15.5 8.5 10.5 2 17"
-      stroke={color}
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <Path
-      d="M16 7h6v6"
-      stroke={color}
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </Svg>
-);
-
-// Custom Home Icon Component
-const HomeIcon: React.FC<{size?: number; color?: string}> = ({
+const JournalIcon: React.FC<{size?: number}> = ({
   size = 24,
-  color = '#FFFFFF',
 }) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
-    <Path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
-  </Svg>
-);
-
-// Custom Journal Icon Component
-const JournalIcon: React.FC<{size?: number; color?: string}> = ({
-  size = 24,
-  color = '#FFFFFF',
-}) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
-    <Path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+  <Svg width={size} height={size} viewBox="0 0 16 16" fill="#FFFFFF">
+    <Path d="M5 10.5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 0 1h-2a.5.5 0 0 1-.5-.5zm0-2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5zm0-2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5zm0-2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5z" />
+    <Path d="M3 0h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-1h1v1a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v1H1V2a2 2 0 0 1 2-2z" />
+    <Path d="M1 5v-.5a.5.5 0 0 1 1 0V5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1H1zm0 3v-.5a.5.5 0 0 1 1 0V8h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1H1zm0 3v-.5a.5.5 0 0 1 1 0v.5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1H1z" />
   </Svg>
 );
 
@@ -151,6 +67,7 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
     breakdown: string;
     insights: string[];
     emoji: string;
+    color: string;
   } | null>(null);
   const [showThemeModal, setShowThemeModal] = useState(false);
 
@@ -176,55 +93,27 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
     loadUserName();
   }, []);
 
-  // Theme icon mapping
-  const getThemeIcon = (themeName: string) => {
-    switch (themeName.toLowerCase()) {
-      case 'self-reflection':
-        return BrainIcon;
-      case 'emotions':
-        return HeartIcon;
-      case 'relationships':
-        return LightbulbIcon;
-      case 'daily life':
-        return TrendingUpIcon;
-      default:
-        return BrainIcon;
-    }
-  };
-
   // Theme color mapping
-  const getThemeColors = (themeName: string) => {
+  const getThemeColor = (themeName: string) => {
     switch (themeName.toLowerCase()) {
       case 'self-reflection':
-        return {
-          background: '#DBEAFE',
-          text: '#1E40AF',
-          border: '#BFDBFE',
-        };
+        return '#000000';
       case 'daily life':
-        return {
-          background: '#DCFCE7',
-          text: '#166534',
-          border: '#BBF7D0',
-        };
+        return '#333333';
       case 'emotions':
-        return {
-          background: '#F3E8FF',
-          text: '#7C3AED',
-          border: '#DDD6FE',
-        };
+        return '#666666';
       case 'relationships':
-        return {
-          background: '#FED7AA',
-          text: '#C2410C',
-          border: '#FDBA74',
-        };
+        return '#999999';
+      case 'work':
+        return '#000000';
+      case 'health':
+        return '#333333';
+      case 'growth':
+        return '#666666';
+      case 'creativity':
+        return '#999999';
       default:
-        return {
-          background: '#F3F4F6',
-          text: '#374151',
-          border: '#D1D5DB',
-        };
+        return '#666666';
     }
   };
 
@@ -296,7 +185,7 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
                   emoji: '💭',
                 },
                 {
-                  name: 'Relationships',
+                  name: 'Growth',
                   count: 2,
                   breakdown:
                     'Your connections with others play an important role in your personal growth and well-being.',
@@ -305,14 +194,14 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
                     "You're learning about interpersonal dynamics",
                     'You seek understanding in your relationships',
                   ],
-                  emoji: '❤️',
+                  emoji: '🌱',
                 },
               ],
               emotions: [
-                {name: 'Contemplative', percentage: 40, color: '#64748B'},
-                {name: 'Hopeful', percentage: 30, color: '#3B82F6'},
-                {name: 'Uncertain', percentage: 20, color: '#F59E0B'},
-                {name: 'Grateful', percentage: 10, color: '#10B981'},
+                {name: 'Contemplative', percentage: 40, color: '#000000'},
+                {name: 'Hopeful', percentage: 30, color: '#333333'},
+                {name: 'Uncertain', percentage: 20, color: '#666666'},
+                {name: 'Grateful', percentage: 10, color: '#999999'},
               ],
               perspective:
                 'Your willingness to write and reflect shows incredible self-awareness and courage.',
@@ -420,23 +309,23 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
               emoji: '💭',
             },
             {
-              name: 'Relationships',
+              name: 'Growth',
               count: 2,
               breakdown:
-                'Your connections with others play an important role in your personal growth and well-being.',
+                'Your focus on personal development and learning is evident throughout your writing.',
               insights: [
-                'You value meaningful connections',
-                "You're learning about interpersonal dynamics",
-                'You seek understanding in your relationships',
+                "You're committed to continuous improvement",
+                'You see challenges as opportunities',
+                'You value learning from experiences',
               ],
-              emoji: '❤️',
+              emoji: '🌱',
             },
           ],
           emotions: [
-            {name: 'Contemplative', percentage: 40, color: '#64748B'},
-            {name: 'Hopeful', percentage: 30, color: '#3B82F6'},
-            {name: 'Uncertain', percentage: 20, color: '#F59E0B'},
-            {name: 'Grateful', percentage: 10, color: '#10B981'},
+            {name: 'Contemplative', percentage: 40, color: '#000000'},
+            {name: 'Hopeful', percentage: 30, color: '#333333'},
+            {name: 'Uncertain', percentage: 20, color: '#666666'},
+            {name: 'Grateful', percentage: 10, color: '#999999'},
           ],
           perspective:
             'Your willingness to write and reflect shows incredible self-awareness and courage.',
@@ -558,7 +447,11 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
     insights: string[];
     emoji: string;
   }) => {
-    setSelectedTheme(theme);
+    const themeWithColor = {
+      ...theme,
+      color: getThemeColor(theme.name),
+    };
+    setSelectedTheme(themeWithColor);
     setShowThemeModal(true);
   };
 
@@ -568,16 +461,13 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
     setSelectedTheme(null);
   };
 
-  // Parse AI insights into individual insights
-  const parseAIInsights = (text: string) => {
-    // Split by common delimiters and filter out empty strings
-    const insights = text
-      .split(/\n\n|\. (?=[A-Z])|(?:\d+\.\s)/)
-      .filter(insight => insight.trim().length > 0)
-      .map(insight => insight.trim().replace(/^\d+\.\s*/, ''))
-      .slice(0, 3); // Limit to 3 insights for better UI
-
-    return insights.length > 0 ? insights : [text];
+  const getCurrentDate = () => {
+    const today = new Date();
+    return today.toLocaleDateString('en-US', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
   };
 
   // Helper function to personalize insights
@@ -616,20 +506,26 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Analysis</Text>
-          <Text style={styles.headerSubtitle}>Your journal insights</Text>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <Text style={styles.backButtonText}>←</Text>
+          </TouchableOpacity>
+          <View>
+            <Text style={styles.headerTitle}>Analysis Complete</Text>
+            <Text style={styles.headerSubtitle}>Your journal insights</Text>
+          </View>
+          <TouchableOpacity style={styles.menuButton}>
+            <Text style={styles.menuDots}>⋯</Text>
+          </TouchableOpacity>
         </View>
 
         {loadingCharts ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="small" color="#000000" />
+            <ActivityIndicator size="large" color="#000000" />
             <Text style={styles.loadingTitle}>Analyzing your entry</Text>
-            <Text style={styles.loadingSubtitle}>
-              Finding themes and emotions...
-            </Text>
+            <Text style={styles.loadingSubtitle}>Finding themes and emotions...</Text>
             <View style={styles.progressBarBackground}>
               <Animated.View
                 style={[
@@ -645,142 +541,127 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
             </View>
           </View>
         ) : (
-          <>
+          <View style={styles.content}>
+            {/* Date and Summary */}
+            <View style={styles.dateSection}>
+              <Text style={styles.currentDate}>{getCurrentDate()}</Text>
+              <Text style={styles.summary}>
+                {analysisData?.themes?.length || 0} themes identified • {analysisData?.emotions?.length || 0} key emotions • Personal insights generated
+              </Text>
+            </View>
+
             {/* Themes Section */}
-            <View style={styles.card}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle}>Themes</Text>
-                <Text style={styles.cardSubtitle}>
-                  Key topics in your entry
-                </Text>
-              </View>
-              <View style={styles.cardContent}>
-                <View style={styles.themesGrid}>
-                  {(analysisData?.themes || []).map((theme, index) => {
-                    const IconComponent = getThemeIcon(theme.name);
-                    const colors = getThemeColors(theme.name);
-                    return (
-                      <TouchableOpacity
-                        key={index}
-                        style={[styles.themeCard, {borderColor: colors.border}]}
-                        onPress={() => handleThemePress(theme)}>
-                        <View style={styles.themeHeader}>
-                          {theme.emoji ? (
-                            <Text style={styles.themeEmoji}>{theme.emoji}</Text>
-                          ) : (
-                            <IconComponent size={16} color={colors.text} />
-                          )}
-                          <Text
-                            style={[styles.themeName, {color: colors.text}]}>
-                            {theme.name}
-                          </Text>
-                        </View>
-                        <View
-                          style={[
-                            styles.themeBadge,
-                            {
-                              backgroundColor: colors.background,
-                              borderColor: colors.border,
-                            },
-                          ]}>
-                          <Text
-                            style={[
-                              styles.themeBadgeText,
-                              {color: colors.text},
-                            ]}>
-                            {theme.count} mentions
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-                    );
-                  })}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>THEMES DISCOVERED</Text>
+                <View style={styles.categoryCount}>
+                  <Text style={styles.categoryCountText}>{analysisData?.themes?.length || 0}</Text>
                 </View>
+              </View>
+
+              <View style={styles.themesGrid}>
+                {(analysisData?.themes || []).map((theme, index) => (
+                  <TouchableOpacity key={index} style={styles.themeCard} onPress={() => handleThemePress(theme)}>
+                    <View style={styles.themeHeader}>
+                      <View style={[styles.themeIcon, { backgroundColor: getThemeColor(theme.name) }]}>
+                        <Text style={styles.themeEmoji}>{theme.emoji}</Text>
+                      </View>
+                      <View style={styles.themeContent}>
+                        <Text style={styles.themeName}>{theme.name}</Text>
+                        <Text style={styles.themeDescription}>{theme.count} mentions found</Text>
+                      </View>
+                    </View>
+                    <View style={[styles.themeAmount, { backgroundColor: getThemeColor(theme.name) }]}>
+                      <Text style={styles.themeCount}>{theme.count}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
               </View>
             </View>
 
             {/* Emotions Section */}
-            <View style={styles.card}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle}>Emotion Breakdown</Text>
-                <Text style={styles.cardSubtitle}>How you're feeling</Text>
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>EMOTIONAL BREAKDOWN</Text>
+                <View style={styles.categoryCount}>
+                  <Text style={styles.categoryCountText}>{analysisData?.emotions?.length || 0}</Text>
+                </View>
               </View>
-              <View style={styles.cardContent}>
+
+              <View style={styles.emotionsContainer}>
                 {(analysisData?.emotions || []).map((emotion, index) => (
                   <View key={index} style={styles.emotionItem}>
                     <View style={styles.emotionHeader}>
+                      <View style={[styles.emotionDot, { backgroundColor: emotion.color }]} />
                       <Text style={styles.emotionName}>{emotion.name}</Text>
-                      <Text style={styles.emotionPercent}>
-                        {emotion.percentage}%
-                      </Text>
                     </View>
-                    <View style={styles.progressBarContainer}>
-                      <View style={styles.progressBarBackground}>
-                        <View
-                          style={[
-                            styles.progressBarFill,
-                            {
-                              width: `${emotion.percentage}%`,
-                              backgroundColor: emotion.color,
-                            },
-                          ]}
-                        />
+                    <View style={styles.emotionRight}>
+                      <View style={styles.emotionBarContainer}>
+                        <View style={styles.emotionBarBackground}>
+                          <View
+                            style={[
+                              styles.emotionBarFill,
+                              {
+                                width: `${emotion.percentage}%`,
+                                backgroundColor: emotion.color,
+                              },
+                            ]}
+                          />
+                        </View>
                       </View>
+                      <Text style={styles.emotionPercent}>{emotion.percentage}%</Text>
                     </View>
                   </View>
                 ))}
               </View>
             </View>
 
-            {/* Alternative Perspective */}
-            <View style={styles.card}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle}>Alternative Perspective</Text>
+            {/* AI Insights */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>AI INSIGHTS</Text>
               </View>
-              <View style={styles.cardContent}>
-                {loadingPerspective ? (
-                  <View style={styles.loadingRow}>
-                    <ActivityIndicator size="small" color="#000000" />
-                    <Text style={styles.loadingText}>
-                      Generating perspective...
-                    </Text>
+
+              {loadingAI ? (
+                <View style={styles.loadingRow}>
+                  <ActivityIndicator size="small" color="#000000" />
+                  <Text style={styles.loadingText}>Generating insights...</Text>
+                </View>
+              ) : (
+                <View style={styles.insightCard}>
+                  <View style={styles.insightIcon}>
+                    <Text style={styles.insightEmoji}>💡</Text>
                   </View>
-                ) : (
-                  <View style={styles.perspectiveCard}>
-                    <Text style={styles.perspectiveText}>
-                      {alternativePerspective}
-                    </Text>
-                  </View>
-                )}
-              </View>
+                  <Text style={styles.insightText}>
+                    {personalizeInsight(aiText, userName)}
+                  </Text>
+                </View>
+              )}
             </View>
 
-            {/* AI Insights */}
-            <View style={styles.card}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle}>AI Insights</Text>
+            {/* Alternative Perspective */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>ALTERNATIVE PERSPECTIVE</Text>
               </View>
-              <View style={styles.cardContent}>
-                {loadingAI ? (
-                  <View style={styles.loadingRow}>
-                    <ActivityIndicator size="small" color="#000000" />
-                    <Text style={styles.loadingText}>
-                      Generating insights...
-                    </Text>
+
+              {loadingPerspective ? (
+                <View style={styles.loadingRow}>
+                  <ActivityIndicator size="small" color="#000000" />
+                  <Text style={styles.loadingText}>Generating perspective...</Text>
+                </View>
+              ) : (
+                <View style={styles.perspectiveCard}>
+                  <View style={styles.perspectiveIcon}>
+                    <Text style={styles.perspectiveEmoji}>🔄</Text>
                   </View>
-                ) : (
-                  <View style={styles.insightsContainer}>
-                    {parseAIInsights(aiText).map((insight, index) => (
-                      <View key={index} style={styles.insightCard}>
-                        <Text style={styles.insightText}>
-                          {personalizeInsight(insight, userName)}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
-              </View>
+                  <Text style={styles.perspectiveText}>
+                    {alternativePerspective}
+                  </Text>
+                </View>
+              )}
             </View>
-          </>
+          </View>
         )}
       </ScrollView>
 
@@ -789,56 +670,48 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
         visible={showThemeModal}
         animationType="slide"
         presentationStyle="pageSheet"
-        onRequestClose={closeThemeModal}>
+        onRequestClose={closeThemeModal}
+      >
         <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>{selectedTheme?.name}</Text>
-            <TouchableOpacity
-              style={styles.modalCloseButton}
-              onPress={closeThemeModal}>
-              <Text style={styles.modalCloseText}>Done</Text>
+            <TouchableOpacity style={styles.modalBackButton} onPress={closeThemeModal}>
+              <Text style={styles.modalBackText}>←</Text>
             </TouchableOpacity>
+            <View>
+              <Text style={styles.modalTitle}>{selectedTheme?.name}</Text>
+              <Text style={styles.modalSubtitle}>Theme details</Text>
+            </View>
+            <View style={styles.modalSpacer} />
           </View>
 
           <ScrollView style={styles.modalContent}>
             {selectedTheme && (
               <>
+                <View style={styles.modalThemeHeader}>
+                  <View style={[styles.modalThemeIcon, { backgroundColor: selectedTheme.color }]}>
+                    <Text style={styles.modalThemeEmoji}>{selectedTheme.emoji}</Text>
+                  </View>
+                  <View style={styles.modalThemeInfo}>
+                    <Text style={styles.modalThemeName}>{selectedTheme.name}</Text>
+                    <Text style={styles.modalThemeCount}>{selectedTheme.count} mentions in your entry</Text>
+                  </View>
+                </View>
+
                 <View style={styles.modalSection}>
-                  <Text style={styles.modalSectionTitle}>
-                    {selectedTheme.emoji && (
-                      <Text style={styles.modalEmoji}>
-                        {selectedTheme.emoji}{' '}
-                      </Text>
-                    )}
-                    Overview
-                  </Text>
+                  <Text style={styles.modalSectionTitle}>Overview</Text>
                   <Text style={styles.modalBreakdown}>
                     {userName
                       ? `${userName}, ${selectedTheme.breakdown.toLowerCase()}`
                       : selectedTheme.breakdown}
                   </Text>
-                  <View style={styles.mentionsCard}>
-                    <Text style={styles.mentionsText}>
-                      This theme appeared{' '}
-                      <Text style={styles.mentionsCount}>
-                        {selectedTheme.count}
-                      </Text>{' '}
-                      times in your entry,
-                      {selectedTheme.count >= 4
-                        ? " showing it's a significant focus for you right now."
-                        : selectedTheme.count >= 2
-                        ? " indicating it's moderately important in your current thoughts."
-                        : " suggesting it's emerging in your awareness."}
-                    </Text>
-                  </View>
                 </View>
 
                 <View style={styles.modalSection}>
                   <Text style={styles.modalSectionTitle}>Key Insights</Text>
-                  {selectedTheme.insights.map((insight, index) => (
-                    <View key={index} style={styles.insightItem}>
-                      <View style={styles.insightBullet} />
-                      <Text style={styles.insightText}>
+                  {selectedTheme.insights.map((insight: string, index: number) => (
+                    <View key={index} style={styles.modalInsightItem}>
+                      <View style={styles.modalInsightDot} />
+                      <Text style={styles.modalInsightText}>
                         {personalizeInsight(insight, userName)}
                       </Text>
                     </View>
@@ -846,9 +719,7 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
                 </View>
 
                 <View style={styles.modalSection}>
-                  <Text style={styles.modalSectionTitle}>
-                    Reflection Questions
-                  </Text>
+                  <Text style={styles.modalSectionTitle}>Reflection Questions</Text>
                   <View style={styles.reflectionCard}>
                     <Text style={styles.reflectionText}>
                       {userName
@@ -858,15 +729,13 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
                   </View>
                   <View style={styles.reflectionCard}>
                     <Text style={styles.reflectionText}>
-                      What patterns do you notice around{' '}
-                      {selectedTheme.name.toLowerCase()}?
+                      What patterns do you notice around {selectedTheme.name.toLowerCase()}?
                     </Text>
                   </View>
                   {userName && (
                     <View style={styles.reflectionCard}>
                       <Text style={styles.reflectionText}>
-                        {userName}, what would you tell a friend who was
-                        experiencing similar thoughts about{' '}
+                        {userName}, what would you tell a friend who was experiencing similar thoughts about{' '}
                         {selectedTheme.name.toLowerCase()}?
                       </Text>
                     </View>
@@ -878,54 +747,171 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
         </SafeAreaView>
       </Modal>
 
-      {/* Floating Home Button */}
-      <TouchableOpacity
-        style={styles.homeButton}
-        onPress={() => navigation.navigate('Home')}>
-        <HomeIcon size={24} color="#FFFFFF" />
-      </TouchableOpacity>
-      {/* Floating Journal Button */}
+      {/* Floating Action Buttons */}
       {entryId && (
-        <TouchableOpacity
-          style={styles.journalButton}
-          onPress={() => navigation.navigate('EntryDetail', {entryId})}>
-          <JournalIcon size={24} color="#FFFFFF" />
+        <TouchableOpacity 
+          style={styles.viewEntryButton} 
+          onPress={() => navigation.navigate('EntryDetail', { 
+            entryId: entryId
+          })}>
+          <JournalIcon size={20} />
         </TouchableOpacity>
       )}
+
+      <TouchableOpacity style={styles.newEntryButton} onPress={() => navigation.navigate('Entry')}>
+        <Text style={styles.newEntryButtonText}>+</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 };
 
-export default AnalysisScreen;
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FFFFFF',
   },
-  content: {
-    padding: 16,
-    paddingBottom: 100, // Space for floating buttons
+  scrollView: {
+    flex: 1,
   },
   header: {
-    marginBottom: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 24,
+    backgroundColor: '#F8F8F8',
+  },
+  backButton: {
+    padding: 8,
+  },
+  backButtonText: {
+    fontSize: 24,
+    color: '#000000',
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: '600',
-    color: '#111827',
-    marginBottom: 4,
+    color: '#000000',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#666666',
+    marginTop: 2,
     fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
-  card: {
+  menuButton: {
+    padding: 8,
+  },
+  menuDots: {
+    fontSize: 20,
+    color: '#666666',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 80,
     backgroundColor: '#FFFFFF',
+    marginHorizontal: 20,
+    marginTop: 8,
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  loadingTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#000000',
+    marginTop: 16,
+    marginBottom: 8,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+  },
+  loadingSubtitle: {
+    fontSize: 16,
+    color: '#666666',
     marginBottom: 24,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+  },
+  progressBarBackground: {
+    width: 200,
+    height: 4,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: 4,
+    backgroundColor: '#000000',
+    borderRadius: 2,
+  },
+  content: {
+    paddingBottom: 100,
+  },
+  dateSection: {
+    paddingHorizontal: 20,
+    paddingVertical: 24,
+    backgroundColor: '#FFFFFF',
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  currentDate: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 4,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+  },
+  summary: {
+    fontSize: 14,
+    color: '#666666',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+  },
+  section: {
+    backgroundColor: '#FFFFFF',
+    marginBottom: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666666',
+    letterSpacing: 0.5,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+  },
+  categoryCount: {
+    backgroundColor: '#E0E0E0',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  categoryCountText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666666',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+  },
+  themesGrid: {
+    gap: 12,
+  },
+  themeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 8,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -934,247 +920,297 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
-  },
-  cardHeader: {
-    padding: 16,
-    paddingBottom: 12,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: '500',
-    color: '#111827',
-    marginBottom: 4,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
-  },
-  cardSubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
-  },
-  cardContent: {
-    padding: 16,
-    paddingTop: 0,
-  },
-  themesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  themeCard: {
-    width: '47%',
-    padding: 16,
-    borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#F3F4F6',
-    backgroundColor: '#FFFFFF',
+    borderColor: '#E0E0E0',
   },
   themeHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
+    flex: 1,
+  },
+  themeIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  themeEmoji: {
+    fontSize: 18,
+  },
+  themeContent: {
+    flex: 1,
   },
   themeName: {
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 2,
     fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
-  themeBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-    alignSelf: 'flex-start',
-  },
-  themeBadgeText: {
-    fontSize: 12,
-    fontWeight: '500',
+  themeDescription: {
+    fontSize: 14,
+    color: '#666666',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+  },
+  themeAmount: {
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  themeCount: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+  },
+  emotionsContainer: {
+    gap: 16,
   },
   emotionItem: {
-    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   emotionHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    flex: 1,
+  },
+  emotionDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 12,
   },
   emotionName: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '500',
-    color: '#374151',
+    color: '#000000',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+  },
+  emotionRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  emotionBarContainer: {
+    flex: 1,
+    marginHorizontal: 16,
+  },
+  emotionBarBackground: {
+    height: 6,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  emotionBarFill: {
+    height: 6,
+    borderRadius: 3,
   },
   emotionPercent: {
     fontSize: 14,
-    color: '#6B7280',
+    fontWeight: '600',
+    color: '#666666',
+    minWidth: 40,
+    textAlign: 'right',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
-  },
-  progressBarContainer: {
-    position: 'relative',
-  },
-  progressBarBackground: {
-    height: 8,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    height: 8,
-    borderRadius: 4,
-  },
-  perspectiveCard: {
-    backgroundColor: '#EFF6FF',
-    padding: 16,
-    borderRadius: 8,
-    borderLeftWidth: 4,
-    borderLeftColor: '#60A5FA',
-  },
-  perspectiveText: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#374151',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
-  },
-  insightsContainer: {
-    gap: 12,
   },
   insightCard: {
-    backgroundColor: '#F9FAFB',
-    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#F8F8F8',
+    padding: 16,
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#000000',
+  },
+  insightIcon: {
+    width: 32,
+    height: 32,
     borderRadius: 8,
+    backgroundColor: '#000000',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  insightEmoji: {
+    fontSize: 16,
   },
   insightText: {
-    fontSize: 14,
-    color: '#374151',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  loadingTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#000000',
-    marginTop: 16,
-    marginBottom: 8,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
-  },
-  loadingSubtitle: {
     fontSize: 15,
-    color: '#888888',
-    marginBottom: 24,
+    lineHeight: 22,
+    color: '#000000',
+    flex: 1,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+  },
+  perspectiveCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#F8F8F8',
+    padding: 16,
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#666666',
+  },
+  perspectiveIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#666666',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  perspectiveEmoji: {
+    fontSize: 16,
+  },
+  perspectiveText: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: '#000000',
+    flex: 1,
     fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
   loadingRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    padding: 16,
   },
   loadingText: {
-    marginLeft: 10,
-    fontSize: 14,
-    color: '#6B7280',
+    marginLeft: 12,
+    fontSize: 15,
+    color: '#666666',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
-  homeButton: {
+  newEntryButton: {
     position: 'absolute',
-    bottom: 20,
+    bottom: 30,
     right: 20,
+    backgroundColor: '#000000',
     width: 56,
     height: 56,
-    backgroundColor: '#000000',
     borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
   },
-  journalButton: {
-    position: 'absolute',
-    bottom: 20,
-    left: 20,
-    width: 56,
-    height: 56,
-    backgroundColor: '#000000',
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+  newEntryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: '300',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
+  // Modal Styles
   modalContainer: {
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
   modalHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    paddingTop: 20,
+    paddingBottom: 24,
+    backgroundColor: '#F8F8F8',
+  },
+  modalBackButton: {
+    padding: 8,
+  },
+  modalBackText: {
+    fontSize: 24,
+    color: '#000000',
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '600',
     color: '#000000',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
-  modalCloseButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: '#000000',
-    borderRadius: 20,
-  },
-  modalCloseText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#666666',
+    marginTop: 2,
     fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+  },
+  modalSpacer: {
+    width: 40,
   },
   modalContent: {
     flex: 1,
+    paddingBottom: 40,
+  },
+  modalThemeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 20,
+    paddingVertical: 24,
+    backgroundColor: '#FFFFFF',
+    marginBottom: 8,
+  },
+  modalThemeIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  modalThemeEmoji: {
+    fontSize: 28,
+  },
+  modalThemeInfo: {
+    flex: 1,
+  },
+  modalThemeName: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 4,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+  },
+  modalThemeCount: {
+    fontSize: 14,
+    color: '#666666',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
   modalSection: {
-    marginVertical: 20,
+    backgroundColor: '#FFFFFF',
+    marginBottom: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
   },
   modalSectionTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     color: '#000000',
     marginBottom: 12,
     fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
   modalBreakdown: {
-    fontSize: 16,
-    lineHeight: 24,
-    color: '#333333',
+    fontSize: 15,
+    lineHeight: 22,
+    color: '#666666',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
-  insightItem: {
+  modalInsightItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     marginBottom: 12,
   },
-  insightBullet: {
+  modalInsightDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
@@ -1182,8 +1218,15 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginRight: 12,
   },
+  modalInsightText: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: '#000000',
+    flex: 1,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+  },
   reflectionCard: {
-    backgroundColor: '#F5F5F7',
+    backgroundColor: '#F8F8F8',
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
@@ -1195,30 +1238,31 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
-  themeEmoji: {
-    fontSize: 16,
-    marginRight: 8,
+  viewEntryButton: {
+    position: 'absolute',
+    bottom: 30,
+    left: 20,
+    backgroundColor: '#000000',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
   },
-  modalEmoji: {
-    fontSize: 16,
-    marginRight: 8,
-  },
-  mentionsCard: {
-    backgroundColor: '#F5F5F7',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-  mentionsText: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#000000',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
-  },
-  mentionsCount: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#000000',
+  viewEntryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: '300',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
 });
+
+export default AnalysisScreen;

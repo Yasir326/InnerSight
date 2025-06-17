@@ -15,10 +15,46 @@ import {
 } from 'react-native';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../navigation/AppNavigator';
-import {getJournalEntryById} from '../services/journalEntries';
+import {journalEntriesService} from '../services/journalEntries';
 import {safeAwait} from '../utils/safeAwait';
+import { Path, Circle, G } from 'react-native-svg';
+import Svg from 'react-native-svg';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EntryDetail'>;
+
+const AnalysisIcon: React.FC<{size?: number; color?: string}> = ({
+  size = 24,
+  color = '#FFFFFF',
+}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <G>
+      <Circle
+        cx="8"
+        cy="10"
+        r="3"
+        fill="#f6f8f9"
+        stroke={color}
+        strokeWidth="2"
+      />
+      <Path
+        d="M5.83,12.12,3,15M8,7a3,3,0,1,0,3,3A3,3,0,0,0,8,7Zm3,10h6m-2-4h2"
+        fill="none"
+        stroke={color}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+      <Path
+        d="M8,3H20a1,1,0,0,1,1,1V20a1,1,0,0,1-1,1H8a1,1,0,0,1-1-1V17"
+        fill="none"
+        stroke={color}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    </G>
+  </Svg>
+);
 
 const EntryDetailScreen: React.FC<Props> = ({route, navigation}) => {
   const {entryId} = route.params;
@@ -28,7 +64,7 @@ const EntryDetailScreen: React.FC<Props> = ({route, navigation}) => {
   useEffect(() => {
     const loadEntry = async () => {
       const [error, journalEntry] = await safeAwait(
-        getJournalEntryById(entryId),
+        journalEntriesService.getEntry(entryId),
       );
 
       if (error) {
@@ -124,7 +160,7 @@ const EntryDetailScreen: React.FC<Props> = ({route, navigation}) => {
               entryTitle: entry.title,
             })
           }>
-          <Text style={styles.analyzeButtonText}>View Analysis</Text>
+          <AnalysisIcon size={24} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -234,15 +270,12 @@ const styles = StyleSheet.create({
   },
   analyzeButton: {
     backgroundColor: '#000000',
-    paddingVertical: 16,
-    borderRadius: 12,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
-  },
-  analyzeButtonText: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '600',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    justifyContent: 'center',
+    alignSelf: 'center',
   },
 });
 
