@@ -9,6 +9,7 @@ import {
   FlatList,
   ActivityIndicator,
   Alert,
+  Image,
 } from 'react-native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../navigation/AppNavigator';
@@ -33,7 +34,7 @@ const TrashIcon: React.FC<{size?: number; color?: string}> = ({
 
 const JournalIcon: React.FC<{size?: number; color?: string}> = ({
   size = 16,
-  color = '#666666',
+  color = '#000000',
 }) => (
   <Svg width={size} height={size} viewBox="0 0 16 16" fill={color}>
     <Path d="M5 10.5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 0 1h-2a.5.5 0 0 1-.5-.5zm0-2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5zm0-2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5zm0-2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5z" />
@@ -265,28 +266,34 @@ const HomeScreen: React.FC = () => {
   );
 
   const renderHeader = () => (
-    <View style={styles.headerContent}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>{getWelcomeMessage()}</Text>
-          <Text style={styles.headerSubtitle}>Personal reflection</Text>
+    <View>
+      <View style={styles.headerContent}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.headerTitle}>{getWelcomeMessage()}</Text>
+            <Text style={styles.headerSubtitle}>Personal reflection</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.menuButton}
+            onPress={() => navigation.navigate('Account')}>
+            <Image
+              source={require('../assets/png/logo-color-brain.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity
-          style={styles.menuButton}
-          onPress={() => navigation.navigate('Account')}>
-          <Text style={styles.menuDots}>⋯</Text>
-        </TouchableOpacity>
-      </View>
 
-      {/* Date and Stats */}
-      <View style={styles.dateSection}>
-        <Text style={styles.currentDate}>{getCurrentDate()}</Text>
-        <Text style={styles.comparison}>{getThisWeekComparison()}</Text>
+        {/* Date and Stats */}
+        <View style={styles.dateSection}>
+          <Text style={styles.currentDate}>{getCurrentDate()}</Text>
+          <Text style={styles.comparison}>{getThisWeekComparison()}</Text>
+        </View>
       </View>
 
       {/* Analytics Categories */}
-      <View style={styles.categoriesSection}>
+      <View style={styles.analyticsSection}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>ANALYTICS</Text>
           <View style={styles.categoryCount}>
@@ -380,10 +387,11 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 24,
     marginBottom: 8,
+    position: 'relative',
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     alignItems: 'flex-start',
     marginBottom: 24,
   },
@@ -400,11 +408,19 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
   menuButton: {
-    padding: 8,
+    position: 'absolute',
+    top: -10,
+    right: -10,
+    padding: 0,
+    zIndex: 1,
+    borderRadius: 100,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 3,
+    borderColor: '#E0E0E0',
   },
-  menuDots: {
-    fontSize: 20,
-    color: '#666666',
+  logoImage: {
+    width: 44,
+    height: 44,
   },
   dateSection: {
     marginBottom: 32,
@@ -421,14 +437,29 @@ const styles = StyleSheet.create({
     color: '#666666',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
-  categoriesSection: {
-    marginBottom: 32,
+  analyticsSection: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 20,
+    marginBottom: 12,
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
+    paddingHorizontal: 4,
   },
   sectionTitle: {
     fontSize: 12,
@@ -439,14 +470,14 @@ const styles = StyleSheet.create({
   },
   categoryCount: {
     backgroundColor: '#E0E0E0',
-    borderRadius: 12,
+    borderRadius: 10,
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
   categoryCountText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#666666',
+    color: '#000000',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
   categoriesGrid: {
@@ -463,10 +494,10 @@ const styles = StyleSheet.create({
   categoryIcon: {
     width: 32,
     height: 32,
-    borderRadius: 8,
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: 10,
   },
   categoryEmoji: {
     fontSize: 16,
@@ -502,7 +533,9 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
   },
   entriesSection: {
-    marginBottom: 16,
+
+    marginHorizontal: 20,
+    alignItems: 'center',
   },
   entryItem: {
     backgroundColor: '#FFFFFF',

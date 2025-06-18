@@ -19,6 +19,7 @@ import {authHelpers, supabase, ensureUserProfile} from '../lib/supabase';
 import {safeAwait} from '../utils/safeAwait';
 import {journalEntriesService} from '../services/journalEntries';
 import {analyzeUserStreaks} from '../services/streakAnalytics';
+import IdentityManager from '../components/IdentityManager';
 
 // Custom Icons
 const BackIcon: React.FC<{size?: number; color?: string}> = ({
@@ -434,6 +435,15 @@ const AccountScreen: React.FC = () => {
               <Text style={styles.settingValue}>All entries are private</Text>
             </View>
           </View>
+        </View>
+
+        {/* Security Settings */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>SECURITY</Text>
+          </View>
+
+          <IdentityManager onIdentitiesChanged={loadUserData} />
         </View>
 
         {/* App Settings */}

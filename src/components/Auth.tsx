@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState} from 'react';
 import {
   View,
   Text,
@@ -11,10 +11,9 @@ import {
   Platform,
   ScrollView,
   Image,
-  Linking,
 } from 'react-native';
 import Svg, {Path} from 'react-native-svg';
-import {authHelpers, createSessionFromUrl} from '../lib/supabase';
+import {authHelpers} from '../lib/supabase';
 
 // Google Logo Icon
 const GoogleIcon: React.FC<{size?: number}> = ({size = 20}) => (
@@ -48,17 +47,6 @@ const AppleIcon: React.FC<{size?: number; color?: string}> = ({
   </Svg>
 );
 
-// GitHub Logo Icon
-// const GitHubIcon: React.FC<{size?: number; color?: string}> = ({
-//   size = 20,
-//   color = '#FFFFFF',
-// }) => (
-//   <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
-//     <Path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0012 2z" />
-//   </Svg>
-// );
-
-// Place this ABOVE the Auth component definition
 const SocialButton = ({
   provider,
   title,
@@ -100,7 +88,6 @@ interface AuthProps {
   onAuthSuccess: () => void;
 }
 
-// IMPORTANT: Export as both default and named export to ensure compatibility
 export const Auth: React.FC<AuthProps> = ({onAuthSuccess}) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -108,43 +95,6 @@ export const Auth: React.FC<AuthProps> = ({onAuthSuccess}) => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
   const [socialLoading, setSocialLoading] = useState<string | null>(null);
-
-  // Handle deep linking for OAuth callbacks
-  useEffect(() => {
-    const handleDeepLink = async (url: string) => {
-      console.log('🔗 Received deep link:', url);
-
-      if (url.includes('innersight://auth/callback')) {
-        try {
-          const session = await createSessionFromUrl(url);
-          if (session) {
-            console.log('✅ Session created from deep link');
-            onAuthSuccess();
-          }
-        } catch (error) {
-          console.error('❌ Error creating session from URL:', error);
-          Alert.alert(
-            'Authentication Error',
-            'Failed to complete sign in. Please try again.',
-          );
-        }
-      }
-    };
-
-    Linking.getInitialURL().then(url => {
-      if (url) {
-        handleDeepLink(url);
-      }
-    });
-
-    const subscription = Linking.addEventListener('url', event => {
-      handleDeepLink(event.url);
-    });
-
-    return () => {
-      subscription?.remove();
-    };
-  }, [onAuthSuccess]);
 
   const handleAuth = async () => {
     if (!email.trim() || !password.trim()) {
@@ -194,49 +144,15 @@ export const Auth: React.FC<AuthProps> = ({onAuthSuccess}) => {
       if (error) {
         console.error('❌ Sign up error details:', error);
         const errorMessage =
-          error && typeof error === 'object' && 'message' in error
+          typeof error === 'object' && 'message' in error
             ? (error as any).message
             : 'An error occurred during sign up';
         Alert.alert('Sign Up Error', errorMessage);
-      } else if (data?.user) {
-        Alert.alert(
-          'Account Created!',
-          "We've sent a verification email to your inbox. Please click the link in the email to verify your account, then return here to sign in.",
-          [{text: 'OK', onPress: () => setIsSignUp(false)}],
-        );
       } else {
         Alert.alert(
           'Account Created!',
           "We've sent a verification email to your inbox. Please click the link in the email to verify your account, then return here to sign in.",
           [{text: 'OK', onPress: () => setIsSignUp(false)}],
-        );
-      }
-    } else {
-      console.log('🔑 Attempting sign in:', {email});
-      const {data, error} = await authHelpers.signIn(email.trim(), password);
-      console.log('📝 Sign in response:', {
-        hasData: !!data,
-        hasUser: !!data?.user,
-        errorMessage:
-          error && typeof error === 'object' && 'message' in error
-            ? (error as any).message
-            : 'Unknown error',
-        errorDetails: error,
-      });
-
-      if (error) {
-        console.error('❌ Sign in error details:', error);
-        const errorMessage =
-          error && typeof error === 'object' && 'message' in error
-            ? (error as any).message
-            : 'An error occurred during sign in';
-        Alert.alert('Sign In Error', errorMessage);
-      } else if (data?.user) {
-        onAuthSuccess();
-      } else {
-        Alert.alert(
-          'Sign In',
-          'No user returned. Please check your credentials.',
         );
       }
     }
@@ -244,27 +160,29 @@ export const Auth: React.FC<AuthProps> = ({onAuthSuccess}) => {
     setLoading(false);
   };
 
-  const handleSocialAuth = async (provider: 'google' | 'apple' | 'github') => {
+  const handleSocialAuth = async (provider: 'google' | 'apple') => {
     setSocialLoading(provider);
-    try {
+      console.log('🚀 Starting social auth for:', provider);
       const {data, error} = await authHelpers.signInWithProvider(provider);
 
       if (error) {
+        console.error('❌ Social auth error:', error);
         const errorMessage =
-          error && typeof error === 'object' && 'message' in error
+          typeof error === 'object' && 'message' in error
             ? (error as any).message
             : 'Social sign in failed';
         Alert.alert('Social Sign In Error', errorMessage);
-      } else if (data?.url) {
-        // Open the returned URL in a browser
-        Linking.openURL(data.url);
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Social sign in failed');
-      console.error('Social auth error:', error);
-    } finally {
-      setSocialLoading(null);
+      } else if (data?.session) {
+        console.log('✅ Social auth successful');
+        onAuthSuccess();
+      } else {
+        console.log('❌ No session returned from social auth');
+        Alert.alert(
+          'Error',
+          'Authentication completed but no session was created',
+      );
     }
+    setSocialLoading(null);
   };
 
   const handleForgotPassword = async () => {
@@ -274,24 +192,18 @@ export const Auth: React.FC<AuthProps> = ({onAuthSuccess}) => {
     }
 
     setLoading(true);
-    try {
-      const {error} = await authHelpers.resetPassword(email.trim());
+    const {error} = await authHelpers.resetPassword(email.trim());
 
-      if (error) {
-        const errorMessage =
-          error && typeof error === 'object' && 'message' in error
-            ? (error as any).message
-            : 'Failed to send reset email';
-        Alert.alert('Error', errorMessage);
-      } else {
-        Alert.alert('Success', 'Password reset email sent! Check your inbox.');
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to send reset email');
-      console.error('Reset password error:', error);
-    } finally {
-      setLoading(false);
+    if (error) {
+      const errorMessage =
+        typeof error === 'object' && 'message' in error
+          ? (error as any).message
+          : 'Failed to send reset email';
+      Alert.alert('Error', errorMessage);
+    } else {
+      Alert.alert('Success', 'Password reset email sent! Check your inbox.');
     }
+    setLoading(false);
   };
 
   return (

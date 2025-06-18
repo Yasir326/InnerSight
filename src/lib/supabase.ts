@@ -1,6 +1,9 @@
 import 'react-native-url-polyfill/auto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {createClient} from '@supabase/supabase-js';
+import {makeRedirectUri} from 'expo-auth-session';
+import * as QueryParams from 'expo-auth-session/build/QueryParams';
+import * as WebBrowser from 'expo-web-browser';
 
 import {EXPO_PUBLIC_SUPABASE_URL, EXPO_PUBLIC_SUPABASE_ANON_KEY} from '@env';
 
@@ -8,6 +11,9 @@ console.log('🔧 Supabase client initialization:');
 console.log('- URL:', EXPO_PUBLIC_SUPABASE_URL ? 'Set ✅' : 'Missing ❌');
 console.log('- Key:', EXPO_PUBLIC_SUPABASE_ANON_KEY ? 'Set ✅' : 'Missing ❌');
 console.log('- URL value:', EXPO_PUBLIC_SUPABASE_URL);
+
+// Required for web only
+WebBrowser.maybeCompleteAuthSession();
 
 export const supabase = createClient(
   EXPO_PUBLIC_SUPABASE_URL,
@@ -22,30 +28,80 @@ export const supabase = createClient(
   },
 );
 
-export const createSessionFromUrl = async (url: string) => {
-  const urlObj = new URL(url);
-  const params = new URLSearchParams(urlObj.hash.substring(1));
+// Generate the redirect URI
+const redirectTo = makeRedirectUri();
 
+export const createSessionFromUrl = async (url: string) => {
+  console.log('🔗 Processing auth callback URL:', url);
+
+  // Parse both query params and hash params to handle different OAuth flows
+  const urlObj = new URL(url);
+
+  // Try hash params first (for some OAuth flows)
+  let params = new URLSearchParams(urlObj.hash.substring(1));
+
+  // If no hash params, try query params
+  if (!params.get('access_token') && !params.get('error')) {
+    const {params: queryParams, errorCode} = QueryParams.getQueryParams(url);
+
+    if (errorCode) {
+      console.error('❌ OAuth error:', errorCode);
+      throw new Error(errorCode);
+    }
+
+    const {access_token, refresh_token, error, error_description} = queryParams;
+
+    if (error) {
+      console.error('❌ OAuth error:', error, error_description);
+      throw new Error(error_description || error);
+    }
+
+    if (!access_token) {
+      console.log('ℹ️ No access token found in URL');
+      return null;
+    }
+
+    console.log('✅ Found tokens in query params');
+    const {data, error: sessionError} = await supabase.auth.setSession({
+      access_token,
+      refresh_token: refresh_token || '',
+    });
+
+    if (sessionError) {
+      console.error('❌ Session creation error:', sessionError);
+      throw sessionError;
+    }
+
+    return data.session;
+  }
+
+  // Handle hash params (original implementation)
   const access_token = params.get('access_token');
   const refresh_token = params.get('refresh_token');
   const error = params.get('error');
   const error_description = params.get('error_description');
 
   if (error) {
+    console.error('❌ OAuth error:', error, error_description);
     throw new Error(error_description || error);
   }
 
   if (!access_token) {
-    console.log('No access token found in URL');
+    console.log('ℹ️ No access token found in URL');
     return null;
   }
 
+  console.log('✅ Found tokens in hash params');
   const {data, error: sessionError} = await supabase.auth.setSession({
     access_token,
     refresh_token: refresh_token || '',
   });
 
-  if (sessionError) throw sessionError;
+  if (sessionError) {
+    console.error('❌ Session creation error:', sessionError);
+    throw sessionError;
+  }
+
   return data.session;
 };
 
@@ -107,6 +163,35 @@ export interface UserStreak {
   updated_at: string;
 }
 
+// Identity Linking Types
+export interface UserIdentity {
+  id: string;
+  user_id: string;
+  identity_data: {
+    email?: string;
+    email_verified?: boolean;
+    phone_verified?: boolean;
+    sub?: string;
+    [key: string]: any;
+  };
+  identity_id: string;
+  provider: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IdentityLinkingResult {
+  data: {
+    session?: any;
+  } | null;
+  error: any;
+}
+
+export interface UserIdentitiesResult {
+  identities: UserIdentity[] | null;
+  error: any;
+}
+
 export const authHelpers = {
   signUp: async (email: string, password: string, name?: string) => {
     console.log('🚀 Starting signUp request...');
@@ -161,16 +246,151 @@ export const authHelpers = {
     }
   },
 
-  signInWithProvider: async (provider: 'google' | 'apple' | 'github') => {
+  signInWithProvider: async (provider: 'google' | 'apple') => {
     try {
+      console.log('🚀 Starting OAuth flow for:', provider);
+      console.log('📍 Redirect URI:', redirectTo);
+
       const {data, error} = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: 'innersight://auth/callback',
+          redirectTo,
+          skipBrowserRedirect: true,
         },
       });
-      return {data, error};
+
+      if (error) {
+        console.error('❌ OAuth initiation error:', error);
+        return {data: null, error};
+      }
+
+      if (!data?.url) {
+        console.error('❌ No OAuth URL returned');
+        return {data: null, error: new Error('No OAuth URL returned')};
+      }
+
+      console.log('🌐 Opening OAuth URL:', data.url);
+
+      // Open the OAuth URL in a browser and wait for the callback
+      const res = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+
+      if (res.type === 'success') {
+        console.log('✅ OAuth flow completed successfully');
+        const session = await createSessionFromUrl(res.url);
+        return {data: {session}, error: null};
+      } else {
+        console.log('❌ OAuth flow cancelled or failed:', res.type);
+        return {data: null, error: new Error('OAuth flow was cancelled')};
+      }
     } catch (error) {
+      console.error('💥 OAuth flow error:', error);
+      return {data: null, error};
+    }
+  },
+
+  // Identity Linking Functions
+  linkIdentity: async (provider: 'google' | 'apple') => {
+    try {
+      console.log('🔗 Starting identity linking for:', provider);
+      console.log('📍 Redirect URI:', redirectTo);
+
+      const {data, error} = await supabase.auth.linkIdentity({
+        provider,
+        options: {
+          redirectTo,
+          skipBrowserRedirect: true,
+        },
+      });
+
+      if (error) {
+        console.error('❌ Identity linking initiation error:', error);
+        return {data: null, error};
+      }
+
+      if (!data?.url) {
+        console.error('❌ No identity linking URL returned');
+        return {
+          data: null,
+          error: new Error('No identity linking URL returned'),
+        };
+      }
+
+      console.log('🌐 Opening identity linking URL:', data.url);
+
+      // Open the OAuth URL in a browser and wait for the callback
+      const res = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+
+      if (res.type === 'success') {
+        console.log('✅ Identity linking completed successfully');
+        const session = await createSessionFromUrl(res.url);
+        return {data: {session}, error: null};
+      } else {
+        console.log('❌ Identity linking cancelled or failed:', res.type);
+        return {data: null, error: new Error('Identity linking was cancelled')};
+      }
+    } catch (error) {
+      console.error('💥 Identity linking error:', error);
+      return {data: null, error};
+    }
+  },
+
+  getUserIdentities: async () => {
+    try {
+      console.log('🔍 Fetching user identities...');
+      const {data, error} = await supabase.auth.getUserIdentities();
+
+      if (error) {
+        console.error('❌ Error fetching user identities:', error);
+        return {identities: null, error};
+      }
+
+      console.log(
+        '✅ User identities fetched successfully:',
+        data?.identities?.length || 0,
+        'identities',
+      );
+      return {identities: data?.identities || [], error: null};
+    } catch (error) {
+      console.error('💥 Error fetching user identities:', error);
+      return {identities: null, error};
+    }
+  },
+
+  unlinkIdentity: async (identity: any) => {
+    try {
+      console.log('🔓 Unlinking identity:', identity.provider);
+      const {data, error} = await supabase.auth.unlinkIdentity(identity);
+
+      if (error) {
+        console.error('❌ Error unlinking identity:', error);
+        return {data: null, error};
+      }
+
+      console.log('✅ Identity unlinked successfully');
+      return {data, error: null};
+    } catch (error) {
+      console.error('💥 Error unlinking identity:', error);
+      return {data: null, error};
+    }
+  },
+
+  // Add password to OAuth account
+  addPassword: async (password: string) => {
+    try {
+      console.log('🔐 Adding password to OAuth account...');
+      const {data, error} = await supabase.auth.updateUser({
+        password: password,
+      });
+
+      if (error) {
+        console.error('❌ Error adding password:', error);
+        return {data: null, error};
+      }
+
+      console.log('✅ Password added successfully');
+      return {data, error: null};
+    } catch (error) {
+      console.error('💥 Error adding password:', error);
       return {data: null, error};
     }
   },

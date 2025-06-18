@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "android": "react-native run-android",
-    "ios": "react-native run-ios -- --simulator='iPhone 16 Pro'",
+    "ios": "react-native run-ios",
     "lint": "eslint .",
     "start": "react-native start",
     "test": "jest"
@@ -20,7 +20,10 @@
     "d3-hierarchy": "^3.1.2",
     "dotenv": "^16.5.0",
     "event-source-polyfill": "^1.0.31",
+    "expo": "~53.0.0",
+    "expo-auth-session": "^6.2.0",
     "expo-linking": "^7.1.5",
+    "expo-web-browser": "^14.1.6",
     "metro-core": "^0.82.3",
     "metro-runtime": "^0.82.3",
     "react": "19.0.0",
