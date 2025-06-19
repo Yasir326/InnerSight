@@ -14,6 +14,9 @@ import {
 } from 'react-native';
 import Svg, {Path} from 'react-native-svg';
 import {authHelpers} from '../lib/supabase';
+import {getErrorMessage} from '../utils/error';
+
+const baseFontFamily = Platform.OS === 'ios' ? 'System' : 'normal';
 
 // Google Logo Icon
 const GoogleIcon: React.FC<{size?: number}> = ({size = 20}) => (
@@ -134,19 +137,13 @@ export const Auth: React.FC<AuthProps> = ({onAuthSuccess}) => {
       console.log('📝 Sign up response:', {
         hasData: !!data,
         hasUser: !!data?.user,
-        errorMessage:
-          error && typeof error === 'object' && 'message' in error
-            ? (error as any).message
-            : 'Unknown error',
+        errorMessage: getErrorMessage(error),
         errorDetails: error,
       });
 
       if (error) {
         console.error('❌ Sign up error details:', error);
-        const errorMessage =
-          typeof error === 'object' && 'message' in error
-            ? (error as any).message
-            : 'An error occurred during sign up';
+        const errorMessage = getErrorMessage(error);
         Alert.alert('Sign Up Error', errorMessage);
       } else {
         Alert.alert(
@@ -162,24 +159,21 @@ export const Auth: React.FC<AuthProps> = ({onAuthSuccess}) => {
 
   const handleSocialAuth = async (provider: 'google' | 'apple') => {
     setSocialLoading(provider);
-      console.log('🚀 Starting social auth for:', provider);
-      const {data, error} = await authHelpers.signInWithProvider(provider);
+    console.log('🚀 Starting social auth for:', provider);
+    const {data, error} = await authHelpers.signInWithProvider(provider);
 
-      if (error) {
-        console.error('❌ Social auth error:', error);
-        const errorMessage =
-          typeof error === 'object' && 'message' in error
-            ? (error as any).message
-            : 'Social sign in failed';
-        Alert.alert('Social Sign In Error', errorMessage);
-      } else if (data?.session) {
-        console.log('✅ Social auth successful');
-        onAuthSuccess();
-      } else {
-        console.log('❌ No session returned from social auth');
-        Alert.alert(
-          'Error',
-          'Authentication completed but no session was created',
+    if (error) {
+      console.error('❌ Social auth error:', error);
+      const errorMessage = getErrorMessage(error);
+      Alert.alert('Social Sign In Error', errorMessage);
+    } else if (data?.session) {
+      console.log('✅ Social auth successful');
+      onAuthSuccess();
+    } else {
+      console.log('❌ No session returned from social auth');
+      Alert.alert(
+        'Error',
+        'Authentication completed but no session was created',
       );
     }
     setSocialLoading(null);
@@ -195,10 +189,7 @@ export const Auth: React.FC<AuthProps> = ({onAuthSuccess}) => {
     const {error} = await authHelpers.resetPassword(email.trim());
 
     if (error) {
-      const errorMessage =
-        typeof error === 'object' && 'message' in error
-          ? (error as any).message
-          : 'Failed to send reset email';
+      const errorMessage = getErrorMessage(error);
       Alert.alert('Error', errorMessage);
     } else {
       Alert.alert('Success', 'Password reset email sent! Check your inbox.');
@@ -405,14 +396,14 @@ const styles = StyleSheet.create({
     color: '#111827',
     marginBottom: 8,
     textAlign: 'center',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   subtitle: {
     fontSize: 16,
     color: '#6B7280',
     textAlign: 'center',
     lineHeight: 24,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   socialContainer: {
     marginBottom: 24,
@@ -435,7 +426,7 @@ const styles = StyleSheet.create({
   socialButtonText: {
     fontSize: 16,
     fontWeight: '500',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   dividerContainer: {
     flexDirection: 'row',
@@ -452,7 +443,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#9CA3AF',
     fontWeight: '500',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   form: {
     width: '100%',
@@ -465,7 +456,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#374151',
     marginBottom: 8,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   input: {
     borderWidth: 1,
@@ -476,7 +467,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: '#F9FAFB',
     color: '#111827',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   authButton: {
     backgroundColor: '#111827',
@@ -494,7 +485,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   forgotButton: {
     alignItems: 'center',
@@ -505,7 +496,7 @@ const styles = StyleSheet.create({
     color: '#111827',
     fontSize: 14,
     fontWeight: '500',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   switchContainer: {
     flexDirection: 'row',
@@ -520,13 +511,13 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     fontSize: 14,
     marginRight: 4,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   switchButtonText: {
     color: '#111827',
     fontSize: 14,
     fontWeight: '600',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
 });
 
