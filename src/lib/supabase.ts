@@ -406,12 +406,21 @@ export const authHelpers = {
 
   getCurrentUser: async () => {
     try {
-      const {data, error} = await supabase.auth.getUser();
+      console.log('🔍 Getting current user from Supabase...');
+      const {data, error} = await Promise.race([
+        supabase.auth.getUser(),
+        new Promise<{data: any; error: any}>((_, reject) =>
+          setTimeout(() => reject(new Error('getCurrentUser timeout')), 8000),
+        ),
+      ]);
       if (error) {
+        console.error('❌ Error getting current user:', error);
         return {user: null, error};
       }
+      console.log('✅ Current user retrieved:', !!data?.user);
       return {user: data?.user || null, error: null};
     } catch (error) {
+      console.error('💥 Error in getCurrentUser:', error);
       return {user: null, error};
     }
   },
@@ -470,14 +479,17 @@ export const authHelpers = {
 
 export const getCurrentUserId = async (): Promise<string | null> => {
   try {
+    console.log('🔍 Getting current user ID...');
     const result = await authHelpers.getCurrentUser();
     if (result.error) {
-      console.error('Error getting current user ID:', result.error);
+      console.error('❌ Error getting current user ID:', result.error);
       return null;
     }
-    return result.user?.id || null;
+    const userId = result.user?.id || null;
+    console.log('👤 Current user ID result:', userId ? 'Found' : 'Not found');
+    return userId;
   } catch (error) {
-    console.error('Error getting current user ID:', error);
+    console.error('💥 Error getting current user ID:', error);
     return null;
   }
 };

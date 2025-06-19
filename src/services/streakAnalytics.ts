@@ -233,3 +233,164 @@ export const getStreakInsights = async (): Promise<{
     };
   }
 };
+
+/**
+ * Client-side streak calculation as fallback when database functions fail
+ */
+export const calculateStreaksFromEntries = async (): Promise<StreakSummary> => {
+  try {
+    console.log('🔄 Calculating streaks from journal entries (client-side fallback)...');
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      console.error('No authenticated user found');
+      return {
+        currentStreak: 0,
+        longestStreak: 0,
+        totalDaysWithEntries: 0,
+        streakPercentage: 0,
+      };
+    }
+
+    // Get all journal entries for the user
+    const { data: entries, error } = await supabase
+      .from(TABLES.JOURNAL_ENTRIES)
+      .select('created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching entries for streak calculation:', error);
+      return {
+        currentStreak: 0,
+        longestStreak: 0,
+        totalDaysWithEntries: 0,
+        streakPercentage: 0,
+      };
+    }
+
+    if (!entries || entries.length === 0) {
+      return {
+        currentStreak: 0,
+        longestStreak: 0,
+        totalDaysWithEntries: 0,
+        streakPercentage: 0,
+      };
+    }
+
+    // Get unique days with entries
+    const uniqueDays = new Set<string>();
+    entries.forEach(entry => {
+      const date = new Date(entry.created_at);
+      const dayKey = date.toDateString();
+      uniqueDays.add(dayKey);
+    });
+
+    const daysWithEntries = Array.from(uniqueDays).sort((a, b) => 
+      new Date(b).getTime() - new Date(a).getTime()
+    );
+
+    // Calculate current streak
+    let currentStreak = 0;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (let i = 0; i < daysWithEntries.length; i++) {
+      const entryDate = new Date(daysWithEntries[i]);
+      entryDate.setHours(0, 0, 0, 0);
+      
+      const expectedDate = new Date(today);
+      expectedDate.setDate(today.getDate() - i);
+      
+      if (entryDate.getTime() === expectedDate.getTime()) {
+        currentStreak++;
+      } else {
+        break;
+      }
+    }
+
+    // Calculate longest streak
+    let longestStreak = 0;
+    let tempStreak = 1;
+    
+    for (let i = 1; i < daysWithEntries.length; i++) {
+      const currentDate = new Date(daysWithEntries[i]);
+      const previousDate = new Date(daysWithEntries[i - 1]);
+      
+      const dayDiff = Math.abs(
+        (previousDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24)
+      );
+      
+      if (dayDiff === 1) {
+        tempStreak++;
+      } else {
+        longestStreak = Math.max(longestStreak, tempStreak);
+        tempStreak = 1;
+      }
+    }
+    longestStreak = Math.max(longestStreak, tempStreak);
+
+    // Calculate streak percentage (last 30 days)
+    const thirtyDaysAgo = new Date(today);
+    thirtyDaysAgo.setDate(today.getDate() - 30);
+    
+    const recentDays = daysWithEntries.filter(day => 
+      new Date(day) >= thirtyDaysAgo
+    );
+    
+    const streakPercentage = Math.round((recentDays.length / 30) * 100);
+
+    const result = {
+      currentStreak,
+      longestStreak,
+      totalDaysWithEntries: daysWithEntries.length,
+      streakPercentage,
+    };
+
+    console.log('✅ Client-side streak calculation completed:', result);
+    return result;
+  } catch (error) {
+    console.error('Error calculating streaks from entries:', error);
+    return {
+      currentStreak: 0,
+      longestStreak: 0,
+      totalDaysWithEntries: 0,
+      streakPercentage: 0,
+    };
+  }
+};
+
+/**
+ * Update user streaks in database with client-calculated values
+ */
+export const updateStreaksManually = async (streakData: StreakSummary): Promise<boolean> => {
+  try {
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      console.error('No authenticated user found');
+      return false;
+    }
+
+    const { error } = await supabase
+      .from(TABLES.USER_STREAKS)
+      .upsert({
+        user_id: userId,
+        current_streak: streakData.currentStreak,
+        longest_streak: streakData.longestStreak,
+        total_days_with_entries: streakData.totalDaysWithEntries,
+        streak_percentage: streakData.streakPercentage,
+        last_entry_date: new Date().toISOString().split('T')[0],
+        streak_updated_at: new Date().toISOString(),
+      });
+
+    if (error) {
+      console.error('Error manually updating streaks:', error);
+      return false;
+    }
+
+    console.log('✅ Streaks updated manually');
+    return true;
+  } catch (error) {
+    console.error('Error manually updating streaks:', error);
+    return false;
+  }
+};

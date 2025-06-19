@@ -97,9 +97,20 @@ const AppNavigator: React.FC = () => {
           console.log('✅ User is authenticated, checking onboarding...');
           setLoadingMessage('Loading your profile...');
           // If authenticated, check onboarding status
-          const complete = await storageService.isOnboardingComplete();
-          console.log('📋 Onboarding complete:', complete);
-          setOnboardingComplete(complete);
+          try {
+            const complete = await Promise.race([
+              storageService.isOnboardingComplete(),
+              new Promise<boolean>((_, reject) => 
+                setTimeout(() => reject(new Error('Onboarding check timeout')), 10000)
+              )
+            ]);
+            console.log('📋 Onboarding complete:', complete);
+            setOnboardingComplete(complete);
+          } catch (error) {
+            console.error('❌ Error checking onboarding status in useEffect:', error);
+            // Default to false if there's an error
+            setOnboardingComplete(false);
+          }
         } else {
           console.log('❌ User is not authenticated');
           setOnboardingComplete(null);
@@ -127,8 +138,18 @@ const AppNavigator: React.FC = () => {
 
       if (authenticated) {
         // Check onboarding when user signs in
-        const complete = await storageService.isOnboardingComplete();
-        setOnboardingComplete(complete);
+        try {
+          const complete = await Promise.race([
+            storageService.isOnboardingComplete(),
+            new Promise<boolean>((_, reject) => 
+              setTimeout(() => reject(new Error('Onboarding check timeout')), 10000)
+            )
+          ]);
+          setOnboardingComplete(complete);
+        } catch (error) {
+          console.error('❌ Error checking onboarding in auth state change:', error);
+          setOnboardingComplete(false);
+        }
       } else {
         setOnboardingComplete(null);
       }
@@ -144,8 +165,21 @@ const AppNavigator: React.FC = () => {
     console.log('🎉 Auth success callback triggered');
     setIsAuthenticated(true);
     // Check onboarding status after successful auth
-    const complete = await storageService.isOnboardingComplete();
-    setOnboardingComplete(complete);
+    try {
+      console.log('📋 Checking onboarding status after auth success...');
+      const complete = await Promise.race([
+        storageService.isOnboardingComplete(),
+        new Promise<boolean>((_, reject) => 
+          setTimeout(() => reject(new Error('Onboarding check timeout')), 10000)
+        )
+      ]);
+      console.log('✅ Onboarding status retrieved:', complete);
+      setOnboardingComplete(complete);
+    } catch (error) {
+      console.error('❌ Error checking onboarding status:', error);
+      // Default to false if there's an error
+      setOnboardingComplete(false);
+    }
   };
 
   // Show loading screen during initial setup

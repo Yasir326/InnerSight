@@ -1,4 +1,10 @@
-import { supabase, TABLES, getCurrentUserId, ensureUserProfile, type Profile } from '../lib/supabase';
+import {
+  supabase,
+  TABLES,
+  getCurrentUserId,
+  ensureUserProfile,
+  type Profile,
+} from '../lib/supabase';
 
 export interface JournalEntry {
   id: string;
@@ -42,7 +48,7 @@ class StorageService {
       const userId = await getCurrentUserId();
       if (!userId) return false;
 
-      const { error } = await supabase
+      const {error} = await supabase
         .from(TABLES.PROFILES)
         .update(updates)
         .eq('user_id', userId);
@@ -65,15 +71,13 @@ class StorageService {
       const userId = await getCurrentUserId();
       if (!userId) return false;
 
-      const { error } = await supabase
-        .from(TABLES.ONBOARDING_DATA)
-        .upsert({
-          user_id: userId,
-          goals: data.goals,
-          challenges: data.challenges,
-          reflections: data.reflections,
-          is_complete: true,
-        });
+      const {error} = await supabase.from(TABLES.ONBOARDING_DATA).upsert({
+        user_id: userId,
+        goals: data.goals,
+        challenges: data.challenges,
+        reflections: data.reflections,
+        is_complete: true,
+      });
 
       if (error) {
         console.error('Error saving onboarding data:', error);
@@ -92,7 +96,7 @@ class StorageService {
       const userId = await getCurrentUserId();
       if (!userId) return null;
 
-      const { data, error } = await supabase
+      const {data, error} = await supabase
         .from(TABLES.ONBOARDING_DATA)
         .select('*')
         .eq('user_id', userId)
@@ -124,10 +128,34 @@ class StorageService {
 
   async isOnboardingComplete(): Promise<boolean> {
     try {
-      const userId = await getCurrentUserId();
-      if (!userId) return false;
+      console.log('🔍 Starting onboarding completion check...');
 
-      const { data, error } = await supabase
+      // Test database connectivity first
+      console.log('🌐 Testing database connectivity...');
+      const connectivityTest = await supabase
+        .from(TABLES.PROFILES)
+        .select('count')
+        .limit(1);
+
+      if (connectivityTest.error) {
+        console.error(
+          '❌ Database connectivity test failed:',
+          connectivityTest.error,
+        );
+        return false;
+      }
+      console.log('✅ Database connectivity test passed');
+
+      const userId = await getCurrentUserId();
+      console.log('👤 Current user ID:', userId ? 'Found' : 'Not found');
+
+      if (!userId) {
+        console.log('❌ No user ID, onboarding not complete');
+        return false;
+      }
+
+      console.log('📊 Querying onboarding data from Supabase...');
+      const {data, error} = await supabase
         .from(TABLES.ONBOARDING_DATA)
         .select('is_complete')
         .eq('user_id', userId)
@@ -136,15 +164,18 @@ class StorageService {
       if (error) {
         if (error.code === 'PGRST116') {
           // No data found, onboarding not complete
+          console.log('📋 No onboarding data found, not complete');
           return false;
         }
-        console.error('Error checking onboarding status:', error);
+        console.error('❌ Error checking onboarding status:', error);
         return false;
       }
 
-      return data.is_complete || false;
+      const isComplete = data.is_complete || false;
+      console.log('✅ Onboarding completion status:', isComplete);
+      return isComplete;
     } catch (error) {
-      console.error('Error checking onboarding completion:', error);
+      console.error('💥 Error checking onboarding completion:', error);
       return false;
     }
   }
@@ -154,12 +185,10 @@ class StorageService {
       const userId = await getCurrentUserId();
       if (!userId) return false;
 
-      const { error } = await supabase
-        .from(TABLES.ONBOARDING_DATA)
-        .upsert({
-          user_id: userId,
-          is_complete: true,
-        });
+      const {error} = await supabase.from(TABLES.ONBOARDING_DATA).upsert({
+        user_id: userId,
+        is_complete: true,
+      });
 
       if (error) {
         console.error('Error marking onboarding complete:', error);
@@ -178,15 +207,13 @@ class StorageService {
       const userId = await getCurrentUserId();
       if (!userId) return false;
 
-      const { error } = await supabase
-        .from(TABLES.ONBOARDING_DATA)
-        .upsert({
-          user_id: userId,
-          goals: [],
-          challenges: [],
-          reflections: null,
-          is_complete: false,
-        });
+      const {error} = await supabase.from(TABLES.ONBOARDING_DATA).upsert({
+        user_id: userId,
+        goals: [],
+        challenges: [],
+        reflections: null,
+        is_complete: false,
+      });
 
       if (error) {
         console.error('Error resetting onboarding:', error);
@@ -213,7 +240,7 @@ class StorageService {
 
   async saveUserName(name: string): Promise<boolean> {
     try {
-      return await this.updateUserProfile({ name });
+      return await this.updateUserProfile({name});
     } catch (error) {
       console.error('Error saving user name:', error);
       return false;

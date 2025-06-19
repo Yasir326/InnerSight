@@ -24,7 +24,7 @@ const AI_CONFIG = {
   },
   deepseek: {
     baseURL: 'https://api.deepseek.com/v1/chat/completions',
-    model: 'deepseek-chat',
+    model: 'deepseek-reasoner',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
@@ -161,6 +161,113 @@ const generatePersonalizedGuidance = (
   return guidance;
 };
 
+// Helper function to safely extract content from AI response
+const extractContentFromResponse = (response: any): string | null => {
+  try {
+    console.log('🔍 Validating AI response structure...');
+    
+    // Check if response exists at all
+    if (!response) {
+      console.error('❌ No response object provided');
+      return null;
+    }
+    
+    // Log the full response structure for debugging (but limit size)
+    const responseStr = JSON.stringify(response, null, 2);
+    if (responseStr.length > 2000) {
+      console.log('Response structure (truncated):', responseStr.substring(0, 2000) + '...');
+    } else {
+      console.log('Response structure:', responseStr);
+    }
+    
+    // Check if response has data property
+    if (!response.data) {
+      console.error('❌ No data property in response');
+      return null;
+    }
+    
+    const data = response.data;
+    
+    // Method 1: Standard OpenAI/DeepSeek format - choices[0].message.content
+    if (data.choices && Array.isArray(data.choices) && data.choices.length > 0) {
+      const choice = data.choices[0];
+      console.log('🔍 Found choices array, examining first choice...');
+      
+      // OpenAI/DeepSeek standard: choices[0].message.content
+      if (choice.message && typeof choice.message.content === 'string') {
+        console.log('✅ Found content in standard message format');
+        return choice.message.content.trim();
+      }
+      
+      // Alternative: choices[0].text (some APIs use this)
+      if (typeof choice.text === 'string') {
+        console.log('✅ Found content in text format');
+        return choice.text.trim();
+      }
+      
+      // Alternative: choices[0].content (direct content)
+      if (typeof choice.content === 'string') {
+        console.log('✅ Found content in direct choice format');
+        return choice.content.trim();
+      }
+      
+      console.log('🔍 Choice structure:', JSON.stringify(choice, null, 2));
+    }
+    
+    // Method 2: Direct content in data
+    if (typeof data.content === 'string') {
+      console.log('✅ Found content in direct data format');
+      return data.content.trim();
+    }
+    
+    // Method 3: Message content directly in data
+    if (data.message && typeof data.message.content === 'string') {
+      console.log('✅ Found content in direct message format');
+      return data.message.content.trim();
+    }
+    
+    // Method 4: Text property directly in data
+    if (typeof data.text === 'string') {
+      console.log('✅ Found content in direct text format');
+      return data.text.trim();
+    }
+    
+    // Method 5: Response property (some APIs wrap in response)
+    if (data.response && typeof data.response === 'string') {
+      console.log('✅ Found content in response wrapper');
+      return data.response.trim();
+    }
+    
+    // Method 6: Output property (some APIs use this)
+    if (data.output && typeof data.output === 'string') {
+      console.log('✅ Found content in output format');
+      return data.output.trim();
+    }
+    
+    // Method 7: Check for nested structures
+    if (data.result && data.result.content && typeof data.result.content === 'string') {
+      console.log('✅ Found content in nested result format');
+      return data.result.content.trim();
+    }
+    
+    // Log all available properties for debugging
+    console.log('🔍 Available properties in data:', Object.keys(data));
+    if (data.choices && data.choices[0]) {
+      console.log('🔍 Available properties in first choice:', Object.keys(data.choices[0]));
+      if (data.choices[0].message) {
+        console.log('🔍 Available properties in message:', Object.keys(data.choices[0].message));
+      }
+    }
+    
+    console.error('❌ Could not find content in any expected response structure');
+    return null;
+  } catch (error) {
+    console.error('❌ Exception while extracting content from response:', error);
+    console.error('❌ Response object type:', typeof response);
+    return null;
+  }
+};
+
 export async function analyseJournalEntry(entry: string): Promise<string> {
   // Load onboarding data to personalize the response
   const [onboardingError, onboardingData] = await safeAwait(
@@ -174,10 +281,13 @@ export async function analyseJournalEntry(entry: string): Promise<string> {
   const personalContext = buildPersonalizedContext(onboardingData || null);
   const personalGuidance = generatePersonalizedGuidance(onboardingData || null);
 
-  const prompt = `You are a calm, thoughtful psychiatrist. When I share a journal entry, reply in just 1–2 short lines:  
-  – Acknowledge my feeling.  
-  – Reflect back what you heard.  
-  – End with one open question to help me dig deeper.  
+  const prompt = `You are a calm and thoughtful psychiatrist helping me reflect on my journal entry. Keep your reply to 1–2 short sentences. Be warm, respectful, and clear.
+  When I share something, respond with:  
+  – A short acknowledgment of how I might be feeling.  
+  – A brief reflection that shows you understand what I said.  
+  – One gentle, open-ended question to help me explore the topic more deeply.
+  
+  
   
   ${personalContext}${personalGuidance}
   
@@ -200,11 +310,19 @@ export async function analyseJournalEntry(entry: string): Promise<string> {
   );
 
   if (error) {
-    console.error('Error analyzing journal entry:', error);
+    console.error('❌ Error analyzing journal entry:', error);
     return "I'm here to listen and support you. Sometimes it helps to simply acknowledge what you're feeling right now. What stands out most to you about this moment?";
   }
 
-  return res.data.choices[0].message.content.trim();
+  console.log('✅ AI response received, extracting content...');
+  const content = extractContentFromResponse(res);
+
+  if (!content) {
+    console.error('❌ Failed to extract content from AI response');
+    return "I'm here to listen and support you. Sometimes it helps to simply acknowledge what you're feeling right now. What stands out most to you about this moment?";
+  }
+
+  return content;
 }
 
 export async function generateTitleFromEntry(entry: string): Promise<string> {
@@ -229,13 +347,22 @@ export async function generateTitleFromEntry(entry: string): Promise<string> {
   );
 
   if (error) {
-    console.error('Error generating title:', error);
+    console.error('❌ Error generating title:', error);
     // Return a fallback title based on current date
     const now = new Date();
     return `Journal Entry - ${now.toLocaleDateString()}`;
   }
 
-  return res.data.choices[0].message.content.trim();
+  console.log('✅ Title generation response received, extracting content...');
+  const content = extractContentFromResponse(res);
+
+  if (!content) {
+    console.error('❌ Failed to extract title from AI response');
+    const now = new Date();
+    return `Journal Entry - ${now.toLocaleDateString()}`;
+  }
+
+  return content;
 }
 
 export async function generateAlternativePerspective(
@@ -289,11 +416,23 @@ Provide only the alternative perspective, no other text.`;
   );
 
   if (error) {
-    console.error('Error generating alternative perspective:', error);
+    console.error('❌ Error generating alternative perspective:', error);
     return 'Every experience, even difficult ones, offers opportunities for growth and self-understanding. Your willingness to reflect and seek different perspectives shows remarkable strength and wisdom. Consider how this moment might be teaching you something valuable about yourself or your resilience.';
   }
 
-  return res.data.choices[0].message.content.trim();
+  console.log(
+    '✅ Alternative perspective response received, extracting content...',
+  );
+  const content = extractContentFromResponse(res);
+
+  if (!content) {
+    console.error(
+      '❌ Failed to extract alternative perspective from AI response',
+    );
+    return 'Every experience, even difficult ones, offers opportunities for growth and self-understanding. Your willingness to reflect and seek different perspectives shows remarkable strength and wisdom. Consider how this moment might be teaching you something valuable about yourself or your resilience.';
+  }
+
+  return content;
 }
 
 export interface AnalysisData {
@@ -626,23 +765,25 @@ Return only the JSON object:`;
 
   if (error) {
     console.error(
-      'Error analyzing journal entry data - API call failed:',
+      '❌ Error analyzing journal entry data - API call failed:',
       error,
     );
     return getFallbackAnalysisData();
   }
 
-  if (!res?.data?.choices?.[0]?.message?.content) {
-    console.error('Invalid API response structure:', res?.data);
+  console.log('✅ Analysis response received, extracting content...');
+  const rawContent = extractContentFromResponse(res);
+
+  if (!rawContent) {
+    console.error('❌ Failed to extract content from analysis response');
     return getFallbackAnalysisData();
   }
 
   try {
-    const rawContent = res.data.choices[0].message.content;
-    console.log('Raw AI response:', rawContent); // Debug logging
+    console.log('📝 Raw AI response:', rawContent); // Debug logging
 
     const cleanedContent = extractJsonFromResponse(rawContent);
-    console.log('Cleaned content for parsing:', cleanedContent); // Debug logging
+    console.log('🧹 Cleaned content for parsing:', cleanedContent); // Debug logging
 
     const parsedData = JSON.parse(cleanedContent);
 
@@ -650,13 +791,13 @@ Return only the JSON object:`;
     const analysisData = validateAndNormalizeAnalysisData(parsedData);
 
     console.log(
-      'Successfully parsed and validated analysis data:',
+      '✅ Successfully parsed and validated analysis data:',
       analysisData,
     );
     return analysisData;
   } catch (parseError) {
-    console.error('Error parsing AI analysis response:', parseError);
-    console.error('Raw response was:', res.data.choices[0].message.content);
+    console.error('❌ Error parsing AI analysis response:', parseError);
+    console.error('📄 Raw response was:', rawContent);
     return getFallbackAnalysisData();
   }
 }
@@ -722,4 +863,109 @@ const getFallbackAnalysisData = (): AnalysisData => {
     perspective:
       'Your willingness to write and reflect shows incredible self-awareness and courage.',
   };
+};
+
+// Test function to verify AI API connectivity
+export const testAIConnection = async (): Promise<{success: boolean; message: string; details?: any}> => {
+  try {
+    console.log('🔍 Testing AI API connection...');
+    const config = getAIConfig();
+    console.log('🤖 Using provider:', AI_CONFIG.provider);
+    console.log('🌐 API URL:', config.baseURL);
+    console.log('🔧 Model:', config.model);
+    
+    const testPayload = {
+      model: config.model,
+      messages: [{role: 'user', content: 'Hello, this is a test message. Please respond with "Connection successful".'}],
+      max_tokens: 50,
+      temperature: 0.1,
+    };
+    
+    console.log('📤 Sending test payload:', JSON.stringify(testPayload, null, 2));
+    
+    const [error, res] = await safeAwait(
+      axios.post(
+        config.baseURL,
+        testPayload,
+        {
+          headers: config.headers,
+          timeout: 15000, // 15 second timeout
+        },
+      ),
+    );
+
+    if (error) {
+      console.error('❌ AI API connection test failed:', error);
+      const errorDetails = {
+        message: error.message,
+        status: (error as any).response?.status,
+        statusText: (error as any).response?.statusText,
+        data: (error as any).response?.data,
+      };
+      console.error('❌ Error details:', errorDetails);
+      return {
+        success: false,
+        message: `Connection failed: ${error.message || 'Unknown error'}`,
+        details: errorDetails,
+      };
+    }
+
+    console.log('✅ Raw API response received');
+    console.log('📊 Response status:', res.status);
+    console.log('📊 Response headers:', res.headers);
+    
+    // Try to extract content using our improved function
+    const content = extractContentFromResponse(res);
+    
+    if (content) {
+      console.log('✅ AI API connection test successful');
+      console.log('📝 Extracted content:', content);
+      return {
+        success: true,
+        message: `Connection successful. Response: ${content.substring(0, 100)}${content.length > 100 ? '...' : ''}`,
+        details: {
+          provider: AI_CONFIG.provider,
+          model: config.model,
+          responseLength: content.length,
+          fullResponse: content,
+        },
+      };
+    } else {
+      console.error('❌ AI API returned response but content extraction failed');
+      return {
+        success: false,
+        message: 'Connection established but response format is invalid',
+        details: {
+          provider: AI_CONFIG.provider,
+          model: config.model,
+          rawResponse: res.data,
+        },
+      };
+    }
+  } catch (error) {
+    console.error('❌ AI API connection test exception:', error);
+    return {
+      success: false,
+      message: `Connection test failed: ${error}`,
+      details: { exception: String(error) },
+    };
+  }
+};
+
+// Simple debug function to test AI response parsing
+export const debugAIResponse = async (): Promise<void> => {
+  console.log('🐛 Starting AI response debug...');
+  const result = await testAIConnection();
+  console.log('🐛 Test result:', result);
+  
+  if (!result.success) {
+    console.log('🐛 Testing a simple journal analysis to see response structure...');
+    try {
+      const testEntry = 'I had a good day today. I feel grateful for the small moments.';
+      const response = await analyseJournalEntry(testEntry);
+      console.log('🐛 Analysis response:', response);
+    } catch (error) {
+      console.error('🐛 Analysis test failed:', error);
+    }
+  }
 };

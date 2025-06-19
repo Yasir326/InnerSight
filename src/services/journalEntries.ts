@@ -1,4 +1,14 @@
-import { supabase, TABLES, getCurrentUserId, type JournalEntry as SupabaseJournalEntry } from '../lib/supabase';
+import {
+  supabase,
+  TABLES,
+  getCurrentUserId,
+  type JournalEntry as SupabaseJournalEntry,
+} from '../lib/supabase';
+import {
+  recalculateUserStreaks,
+  calculateStreaksFromEntries,
+  updateStreaksManually,
+} from './streakAnalytics';
 
 export interface JournalEntry {
   id: string;
@@ -46,16 +56,30 @@ class JournalEntriesService {
     };
   }
 
-  async saveEntry(entry: Omit<JournalEntry, 'id' | 'createdAt' | 'updatedAt'>): Promise<JournalEntry | null> {
+  async saveEntry(
+    entry: Omit<JournalEntry, 'id' | 'createdAt' | 'updatedAt'>,
+  ): Promise<JournalEntry | null> {
     try {
+      console.log('💾 Starting journal entry save...');
       const userId = await getCurrentUserId();
       if (!userId) {
-        console.error('No authenticated user found');
+        console.error('❌ No authenticated user found');
         return null;
       }
 
+      console.log('👤 User ID found:', userId);
+      console.log('📝 Entry data:', {
+        title: entry.title,
+        contentLength: entry.content?.length || 0,
+        hasConversationData: !!entry.conversationData,
+        hasAnalysisData: !!entry.analysisData,
+      });
+
       const supabaseEntry = this.convertToSupabase(entry);
-      const { data, error } = await supabase
+      console.log('🔄 Converted to Supabase format');
+
+      console.log('📊 Inserting into database...');
+      const {data, error} = await supabase
         .from(TABLES.JOURNAL_ENTRIES)
         .insert({
           user_id: userId,
@@ -65,18 +89,75 @@ class JournalEntriesService {
         .single();
 
       if (error) {
-        console.error('Error saving journal entry:', error);
+        console.error('❌ Database error details:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+        });
+
+        // Check if it's the streak_percentage ambiguity error
+        if (
+          error.message?.includes('streak_percentage') &&
+          error.message?.includes('ambiguous')
+        ) {
+          console.error(
+            '🔍 Column ambiguity detected - this might be a database trigger issue',
+          );
+
+          // Try the direct save method as a fallback
+          console.log('🔄 Trying direct save method...');
+          const directResult = await this.saveEntryDirectly(entry, userId);
+
+          if (directResult) {
+            return directResult;
+          }
+
+          // If direct save also failed, try raw SQL approach
+          console.log('🔧 Trying raw SQL method as final fallback...');
+          return await this.saveEntryMinimal(entry, userId);
+        }
+
+        // Check for other common database issues
+        if (error.code === '42702') {
+          console.error('🔍 Column ambiguity error detected (42702)');
+          return await this.saveEntryDirectly(entry, userId);
+        }
+
+        if (error.code === '23505') {
+          console.error(
+            '🔍 Unique constraint violation - entry might already exist',
+          );
+          return null;
+        }
+
+        if (error.code === '23503') {
+          console.error(
+            '🔍 Foreign key constraint violation - user might not exist in profiles',
+          );
+          return null;
+        }
+
         return null;
       }
 
-      return this.convertFromSupabase(data);
+      console.log('✅ Journal entry saved successfully');
+      const savedEntry = this.convertFromSupabase(data);
+
+      // Manually update streaks as a fallback in case database triggers failed
+      await this.updateUserStreaks();
+
+      return savedEntry;
     } catch (error) {
-      console.error('Error saving journal entry:', error);
+      console.error('💥 Unexpected error saving journal entry:', error);
       return null;
     }
   }
 
-  async updateEntry(id: string, updates: Partial<JournalEntry>): Promise<JournalEntry | null> {
+  async updateEntry(
+    id: string,
+    updates: Partial<JournalEntry>,
+  ): Promise<JournalEntry | null> {
     try {
       const userId = await getCurrentUserId();
       if (!userId) {
@@ -86,7 +167,7 @@ class JournalEntriesService {
 
       const supabaseUpdates = this.convertToSupabase(updates);
 
-      const { data, error } = await supabase
+      const {data, error} = await supabase
         .from(TABLES.JOURNAL_ENTRIES)
         .update(supabaseUpdates)
         .eq('id', id)
@@ -114,11 +195,11 @@ class JournalEntriesService {
         return [];
       }
 
-      const { data, error } = await supabase
+      const {data, error} = await supabase
         .from(TABLES.JOURNAL_ENTRIES)
         .select('*')
         .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+        .order('created_at', {ascending: false});
 
       if (error) {
         console.error('Error getting journal entries:', error);
@@ -140,7 +221,7 @@ class JournalEntriesService {
         return null;
       }
 
-      const { data, error } = await supabase
+      const {data, error} = await supabase
         .from(TABLES.JOURNAL_ENTRIES)
         .select('*')
         .eq('id', id)
@@ -171,7 +252,7 @@ class JournalEntriesService {
         return false;
       }
 
-      const { error } = await supabase
+      const {error} = await supabase
         .from(TABLES.JOURNAL_ENTRIES)
         .delete()
         .eq('id', id)
@@ -192,7 +273,7 @@ class JournalEntriesService {
   async getStats(): Promise<JournalStats> {
     try {
       const entries = await this.getEntries();
-      
+
       if (entries.length === 0) {
         return {
           totalTime: '0h 0m',
@@ -209,8 +290,9 @@ class JournalEntriesService {
       const totalTime = `${hours}h ${minutes}m`;
 
       // Calculate streak
-      const sortedEntries = entries.sort((a, b) => 
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      const sortedEntries = entries.sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       );
 
       let currentStreak = 0;
@@ -227,7 +309,7 @@ class JournalEntriesService {
         }
 
         const dayDiff = Math.floor(
-          (lastDate.getTime() - entryDate.getTime()) / (1000 * 60 * 60 * 24)
+          (lastDate.getTime() - entryDate.getTime()) / (1000 * 60 * 60 * 24),
         );
 
         if (dayDiff === 1) {
@@ -264,12 +346,12 @@ class JournalEntriesService {
         return [];
       }
 
-      const { data, error } = await supabase
+      const {data, error} = await supabase
         .from(TABLES.JOURNAL_ENTRIES)
         .select('*')
         .eq('user_id', userId)
         .or(`title.ilike.%${query}%,content.ilike.%${query}%`)
-        .order('created_at', { ascending: false });
+        .order('created_at', {ascending: false});
 
       if (error) {
         console.error('Error searching journal entries:', error);
@@ -280,6 +362,154 @@ class JournalEntriesService {
     } catch (error) {
       console.error('Error searching journal entries:', error);
       return [];
+    }
+  }
+
+  // Alternative save method that might avoid trigger issues
+  private async saveEntryDirectly(
+    entry: Omit<JournalEntry, 'id' | 'createdAt' | 'updatedAt'>,
+    userId: string,
+  ): Promise<JournalEntry | null> {
+    try {
+      console.log('🔄 Attempting direct save without triggers...');
+
+      // Use a very explicit insert to avoid any potential trigger conflicts
+      const {data, error} = await supabase
+        .from(TABLES.JOURNAL_ENTRIES)
+        .insert([
+          {
+            user_id: userId,
+            title: entry.title || '',
+            content: entry.content || '',
+            conversation_data: entry.conversationData || null,
+            analysis_data: entry.analysisData || null,
+            alternative_perspective: entry.alternativePerspective || null,
+            ai_insights: entry.aiInsights || null,
+          },
+        ])
+        .select('*')
+        .single();
+
+      if (error) {
+        console.error('❌ Direct save failed:', error);
+        return null;
+      }
+
+      console.log('✅ Direct save successful');
+      const savedEntry = this.convertFromSupabase(data);
+
+      // Update streaks manually since we bypassed potential triggers
+      await this.updateUserStreaks();
+
+      return savedEntry;
+    } catch (error) {
+      console.error('❌ Direct save exception:', error);
+      return null;
+    }
+  }
+
+  // Alternative save method that bypasses potential database triggers
+  private async saveEntryMinimal(
+    entry: Omit<JournalEntry, 'id' | 'createdAt' | 'updatedAt'>,
+    userId: string,
+  ): Promise<JournalEntry | null> {
+    try {
+      console.log('🔧 Attempting minimal data insert to bypass triggers...');
+
+      // Save only essential fields to avoid triggering complex database functions
+      const {data, error} = await supabase
+        .from(TABLES.JOURNAL_ENTRIES)
+        .insert({
+          user_id: userId,
+          title: entry.title || 'Journal Entry',
+          content: entry.content || '',
+          // Skip optional fields that might trigger database functions
+          conversation_data: null,
+          analysis_data: null,
+          alternative_perspective: null,
+          ai_insights: null,
+        })
+        .select('*')
+        .single();
+
+      if (error) {
+        console.error('❌ Minimal data insert failed:', error);
+        return null;
+      }
+
+      console.log('✅ Minimal data insert successful');
+      const savedEntry = this.convertFromSupabase(data);
+
+      // Try to update with the additional data in a separate call
+      if (
+        entry.conversationData ||
+        entry.analysisData ||
+        entry.alternativePerspective ||
+        entry.aiInsights
+      ) {
+        console.log('🔄 Attempting to update with additional data...');
+        try {
+          const {error: updateError} = await supabase
+            .from(TABLES.JOURNAL_ENTRIES)
+            .update({
+              conversation_data: entry.conversationData || null,
+              analysis_data: entry.analysisData || null,
+              alternative_perspective: entry.alternativePerspective || null,
+              ai_insights: entry.aiInsights || null,
+            })
+            .eq('id', savedEntry.id);
+
+          if (updateError) {
+            console.warn(
+              '⚠️ Failed to update additional data, but entry was saved:',
+              updateError,
+            );
+          } else {
+            console.log('✅ Additional data updated successfully');
+          }
+        } catch (updateErr) {
+          console.warn('⚠️ Exception updating additional data:', updateErr);
+        }
+      }
+
+      // Manually update streaks as a fallback in case database triggers failed
+      await this.updateUserStreaks();
+
+      return savedEntry;
+    } catch (error) {
+      console.error('❌ Minimal data insert exception:', error);
+      return null;
+    }
+  }
+
+  // Comprehensive streak update with multiple fallbacks
+  private async updateUserStreaks(): Promise<void> {
+    try {
+      console.log('🔄 Attempting to update user streaks...');
+
+      // First try: Database function (might fail due to trigger issues)
+      const dbFunctionSuccess = await recalculateUserStreaks();
+      if (dbFunctionSuccess) {
+        console.log('✅ Streaks updated via database function');
+        return;
+      }
+
+      console.log(
+        '⚠️ Database function failed, trying client-side calculation...',
+      );
+
+      // Second try: Client-side calculation and manual update
+      const clientStreaks = await calculateStreaksFromEntries();
+      const manualUpdateSuccess = await updateStreaksManually(clientStreaks);
+
+      if (manualUpdateSuccess) {
+        console.log('✅ Streaks updated via client-side calculation');
+        return;
+      }
+
+      console.warn('⚠️ All streak update methods failed');
+    } catch (error) {
+      console.error('❌ Exception during streak update:', error);
     }
   }
 }

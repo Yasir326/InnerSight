@@ -39,6 +39,15 @@ const JournalIcon: React.FC<{size?: number}> = ({
   </Svg>
 );
 
+const HomeIcon: React.FC<{size?: number; color?: string}> = ({
+  size = 24,
+  color = '#FFFFFF',
+}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+    <Path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+  </Svg>
+);
+
 const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
   const {entryText, entryId, skipAI = false} = route.params;
 
@@ -758,8 +767,8 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
         </TouchableOpacity>
       )}
 
-      <TouchableOpacity style={styles.newEntryButton} onPress={() => navigation.navigate('Entry')}>
-        <Text style={styles.newEntryButtonText}>+</Text>
+      <TouchableOpacity style={styles.newEntryButton} onPress={() => navigation.navigate('Home')}>
+        <HomeIcon size={24} />
       </TouchableOpacity>
     </SafeAreaView>
   );
