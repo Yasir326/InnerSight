@@ -239,7 +239,6 @@ export const getStreakInsights = async (): Promise<{
  */
 export const calculateStreaksFromEntries = async (): Promise<StreakSummary> => {
   try {
-    console.log('🔄 Calculating streaks from journal entries (client-side fallback)...');
     const userId = await getCurrentUserId();
     if (!userId) {
       console.error('No authenticated user found');
@@ -346,7 +345,6 @@ export const calculateStreaksFromEntries = async (): Promise<StreakSummary> => {
       streakPercentage,
     };
 
-    console.log('✅ Client-side streak calculation completed:', result);
     return result;
   } catch (error) {
     console.error('Error calculating streaks from entries:', error);
@@ -370,27 +368,40 @@ export const updateStreaksManually = async (streakData: StreakSummary): Promise<
       return false;
     }
 
-    const { error } = await supabase
-      .from(TABLES.USER_STREAKS)
+    // Get the most recent entry date
+    const {data: recentEntry} = await supabase
+      .from('journal_entries')
+      .select('created_at')
+      .eq('user_id', userId)
+      .order('created_at', {ascending: false})
+      .limit(1)
+      .single();
+
+    const lastEntryDate = recentEntry 
+      ? new Date(recentEntry.created_at).toISOString().split('T')[0]
+      : null;
+
+    const {error} = await supabase
+      .from('user_streaks')
       .upsert({
         user_id: userId,
         current_streak: streakData.currentStreak,
         longest_streak: streakData.longestStreak,
         total_days_with_entries: streakData.totalDaysWithEntries,
         streak_percentage: streakData.streakPercentage,
-        last_entry_date: new Date().toISOString().split('T')[0],
+        last_entry_date: lastEntryDate,
         streak_updated_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       });
 
     if (error) {
-      console.error('Error manually updating streaks:', error);
+      console.error('Error updating streaks manually:', error);
       return false;
     }
 
-    console.log('✅ Streaks updated manually');
     return true;
   } catch (error) {
-    console.error('Error manually updating streaks:', error);
+    console.error('Error in updateStreaksManually:', error);
     return false;
   }
 };

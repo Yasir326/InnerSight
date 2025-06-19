@@ -214,13 +214,9 @@ const AccountScreen: React.FC = () => {
     setSaving(true);
 
     try {
-      // Delete all user data from our tables
-      console.log('🗑️ Deleting user profile and related data...');
-
       const deletionErrors: string[] = [];
 
       // Delete journal entries
-      console.log('🗑️ Deleting journal entries...');
       const {error: entriesError} = await supabase
         .from('journal_entries')
         .delete()
@@ -229,12 +225,9 @@ const AccountScreen: React.FC = () => {
       if (entriesError) {
         console.error('Error deleting journal entries:', entriesError);
         deletionErrors.push('journal entries');
-      } else {
-        console.log('✅ Journal entries deleted');
       }
 
       // Delete streak data
-      console.log('🗑️ Deleting streak data...');
       const {error: streaksError} = await supabase
         .from('user_streaks')
         .delete()
@@ -243,12 +236,9 @@ const AccountScreen: React.FC = () => {
       if (streaksError) {
         console.error('Error deleting streak data:', streaksError);
         deletionErrors.push('streak data');
-      } else {
-        console.log('✅ Streak data deleted');
       }
 
       // Delete onboarding data
-      console.log('🗑️ Deleting onboarding data...');
       const {error: onboardingError} = await supabase
         .from('onboarding_data')
         .delete()
@@ -257,12 +247,9 @@ const AccountScreen: React.FC = () => {
       if (onboardingError) {
         console.error('Error deleting onboarding data:', onboardingError);
         deletionErrors.push('onboarding data');
-      } else {
-        console.log('✅ Onboarding data deleted');
       }
 
       // Delete profile
-      console.log('🗑️ Deleting user profile...');
       const {error: profileError} = await supabase
         .from('profiles')
         .delete()
@@ -271,24 +258,19 @@ const AccountScreen: React.FC = () => {
       if (profileError) {
         console.error('Error deleting profile:', profileError);
         deletionErrors.push('user profile');
-      } else {
-        console.log('✅ User profile deleted');
       }
 
       // Delete the actual Supabase Auth user account
-      console.log('🗑️ Deleting Supabase Auth user account...');
       const {error: authError} = await supabase.auth.admin.deleteUser(user.id);
 
       if (authError) {
         console.error('Error deleting auth user:', authError);
         deletionErrors.push('user account');
-      } else {
-        console.log('✅ Supabase Auth user account deleted');
       }
 
       // Check if there were any errors
       if (deletionErrors.length > 0) {
-        console.warn('⚠️ Some data deletion failed:', deletionErrors);
+        console.warn('Some data deletion failed:', deletionErrors);
         Alert.alert(
           'Partial Deletion',
           `Your account data has been mostly deleted, but there were issues with: ${deletionErrors.join(', ')}. Please contact support if needed.`,
@@ -302,7 +284,6 @@ const AccountScreen: React.FC = () => {
           ],
         );
       } else {
-        console.log('✅ All user data deleted successfully');
         Alert.alert(
           'Account Completely Deleted',
           'Your account and all associated data have been permanently deleted.',

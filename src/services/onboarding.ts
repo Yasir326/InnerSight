@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { safeAwait } from '../utils/safeAwait';
 import { storageService } from './storage';
+import { getCurrentUserId, supabase } from '../lib/supabase';
 
 export interface OnboardingData {
   userName: string;
@@ -18,38 +19,43 @@ export interface OnboardingData {
 const ONBOARDING_KEY = '@journal_onboarding_data';
 const ONBOARDING_COMPLETE_KEY = '@journal_onboarding_complete';
 const USER_NAME_KEY = '@journal_user_name';
+const ONBOARDING_STORAGE_KEY = '@journal_onboarding_storage_data';
 
-export const saveOnboardingData = async (
-  data: OnboardingData,
-): Promise<void> => {
+export const saveOnboardingData = async (data: OnboardingData): Promise<void> => {
   try {
-    console.log('💾 Saving onboarding data to Supabase...');
-    
-    // Save to Supabase using the storage service
-    const success = await storageService.saveOnboardingData({
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      throw new Error('User not authenticated');
+    }
+
+    const supabaseData = {
+      user_id: userId,
       goals: data.goals,
       challenges: data.challenges,
       reflections: data.reflections,
-    });
+      is_complete: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
 
-    if (!success) {
-      throw new Error('Failed to save onboarding data to Supabase');
-    }
-
-    // Also save user name to profile if provided
-    if (data.userName?.trim()) {
-      const profileSuccess = await storageService.updateUserProfile({
-        name: data.userName.trim(),
+    const {error} = await supabase
+      .from('onboarding_data')
+      .upsert(supabaseData, {
+        onConflict: 'user_id',
       });
-      
-      if (!profileSuccess) {
-        console.warn('Failed to update profile with user name');
-      }
+
+    if (error) {
+      console.error('❌ Error saving onboarding data to Supabase:', error);
+      throw new Error('Failed to save onboarding data');
     }
 
-    console.log('✅ Onboarding data saved successfully');
+    // Also save to AsyncStorage as backup
+    await AsyncStorage.setItem(
+      ONBOARDING_STORAGE_KEY,
+      JSON.stringify(data),
+    );
   } catch (error) {
-    console.error('Error saving onboarding data:', error);
+    console.error('❌ Error in saveOnboardingData:', error);
     throw error;
   }
 };
@@ -106,28 +112,27 @@ export const isOnboardingComplete = async (): Promise<boolean> => {
 
 export const resetOnboarding = async (): Promise<void> => {
   try {
-    console.log('🔄 Resetting onboarding data...');
-    
-    // Reset in Supabase
-    const success = await storageService.resetOnboarding();
-    if (!success) {
-      console.warn('Failed to reset onboarding in Supabase');
-    }
+    // Clear AsyncStorage
+    await AsyncStorage.multiRemove([
+      ONBOARDING_STORAGE_KEY,
+      ONBOARDING_COMPLETE_KEY,
+      USER_NAME_KEY,
+    ]);
 
-    // Also clear AsyncStorage for backward compatibility
-    const [dataError] = await safeAwait(AsyncStorage.removeItem(ONBOARDING_KEY));
-    if (dataError) {
-      console.error('Error removing onboarding data from AsyncStorage:', dataError);
-    }
+    // Clear from Supabase
+    const userId = await getCurrentUserId();
+    if (userId) {
+      const {error} = await supabase
+        .from('onboarding_data')
+        .delete()
+        .eq('user_id', userId);
 
-    const [completeError] = await safeAwait(AsyncStorage.removeItem(ONBOARDING_COMPLETE_KEY));
-    if (completeError) {
-      console.error('Error removing onboarding completion status from AsyncStorage:', completeError);
+      if (error) {
+        console.error('❌ Error deleting onboarding data from Supabase:', error);
+      }
     }
-
-    console.log('✅ Onboarding reset completed');
   } catch (error) {
-    console.error('Error resetting onboarding:', error);
+    console.error('❌ Error resetting onboarding:', error);
     throw error;
   }
 };

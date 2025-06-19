@@ -1,8 +1,8 @@
-import type React from 'react';
-import {useState, useEffect} from 'react';
+import React, {useState, useEffect} from 'react';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {View, Text, ActivityIndicator, StyleSheet} from 'react-native';
+import {safeAwait} from '../utils/safeAwait';
 
 // Auth Component
 import {Auth} from '../components/Auth';
@@ -81,84 +81,49 @@ const AppNavigator: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [loadingMessage, setLoadingMessage] = useState('Initializing...');
 
+  // Initial authentication and onboarding check
   useEffect(() => {
-    const checkAuthAndOnboarding = async () => {
+    const initializeApp = async () => {
       try {
-        console.log('🔍 Checking authentication status...');
         setLoadingMessage('Checking authentication...');
 
-        // Check authentication status
-        const authenticated = await authHelpers.isAuthenticated();
-        console.log('🔐 Authentication status:', authenticated);
+        const [authError, authenticated] = await safeAwait(
+          authHelpers.isAuthenticated(),
+        );
+
+        if (authError) {
+          console.error('❌ Error checking authentication:', authError);
+          setIsAuthenticated(false);
+          setIsLoading(false);
+          return;
+        }
 
         setIsAuthenticated(authenticated);
 
         if (authenticated) {
-          console.log('✅ User is authenticated, checking onboarding...');
-          setLoadingMessage('Loading your profile...');
-          // If authenticated, check onboarding status
-          try {
-            const complete = await Promise.race([
-              storageService.isOnboardingComplete(),
-              new Promise<boolean>((_, reject) => 
-                setTimeout(() => reject(new Error('Onboarding check timeout')), 10000)
-              )
-            ]);
-            console.log('📋 Onboarding complete:', complete);
-            setOnboardingComplete(complete);
-          } catch (error) {
-            console.error('❌ Error checking onboarding status in useEffect:', error);
-            // Default to false if there's an error
+          setLoadingMessage('Checking onboarding status...');
+
+          const [onboardingError, complete] = await safeAwait(
+            storageService.isOnboardingComplete(),
+          );
+
+          if (onboardingError) {
+            console.error('❌ Error checking onboarding status:', onboardingError);
             setOnboardingComplete(false);
+          } else {
+            setOnboardingComplete(complete);
           }
-        } else {
-          console.log('❌ User is not authenticated');
-          setOnboardingComplete(null);
         }
       } catch (error) {
-        console.error('💥 Error checking auth/onboarding status:', error);
+        console.error('❌ Error in app initialization:', error);
         setIsAuthenticated(false);
-        setOnboardingComplete(null);
+        setOnboardingComplete(false);
       } finally {
         setIsLoading(false);
-        console.log('✅ Initial auth check complete');
       }
     };
 
-    checkAuthAndOnboarding();
-
-    // Listen for auth state changes
-    console.log('👂 Setting up auth state listener...');
-    const {
-      data: {subscription},
-    } = authHelpers.onAuthStateChange(async (event, session) => {
-      console.log('🔄 Auth state changed:', event, !!session);
-      const authenticated = !!session;
-      setIsAuthenticated(authenticated);
-
-      if (authenticated) {
-        // Check onboarding when user signs in
-        try {
-          const complete = await Promise.race([
-            storageService.isOnboardingComplete(),
-            new Promise<boolean>((_, reject) => 
-              setTimeout(() => reject(new Error('Onboarding check timeout')), 10000)
-            )
-          ]);
-          setOnboardingComplete(complete);
-        } catch (error) {
-          console.error('❌ Error checking onboarding in auth state change:', error);
-          setOnboardingComplete(false);
-        }
-      } else {
-        setOnboardingComplete(null);
-      }
-    });
-
-    return () => {
-      console.log('🧹 Cleaning up auth listener...');
-      subscription?.unsubscribe();
-    };
+    initializeApp();
   }, []);
 
   const handleAuthSuccess = async () => {

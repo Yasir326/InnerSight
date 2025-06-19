@@ -117,34 +117,16 @@ export const Auth: React.FC<AuthProps> = ({onAuthSuccess}) => {
 
     setLoading(true);
 
-    console.log('🔍 Environment check in React Native:');
-    console.log(
-      '- SUPABASE_URL available:',
-      !!process.env.EXPO_PUBLIC_SUPABASE_URL,
-    );
-    console.log(
-      '- SUPABASE_ANON_KEY available:',
-      !!process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
-    );
-
     if (isSignUp) {
-      console.log('🚀 Attempting sign up:', {email, name});
-      const {data, error} = await authHelpers.signUp(
+      const result = await authHelpers.signUp(
         email.trim(),
         password,
         name.trim(),
       );
-      console.log('📝 Sign up response:', {
-        hasData: !!data,
-        hasUser: !!data?.user,
-        errorMessage: getErrorMessage(error),
-        errorDetails: error,
-      });
 
-      if (error) {
-        console.error('❌ Sign up error details:', error);
-        const errorMessage = getErrorMessage(error);
-        Alert.alert('Sign Up Error', errorMessage);
+      if (result.error) {
+        console.error('❌ Sign up error:', result.error);
+        Alert.alert('Sign Up Error', result.error);
       } else {
         Alert.alert(
           'Account Created!',
@@ -159,18 +141,14 @@ export const Auth: React.FC<AuthProps> = ({onAuthSuccess}) => {
 
   const handleSocialAuth = async (provider: 'google' | 'apple') => {
     setSocialLoading(provider);
-    console.log('🚀 Starting social auth for:', provider);
-    const {data, error} = await authHelpers.signInWithProvider(provider);
+    const result = await authHelpers.signInWithOAuth(provider);
 
-    if (error) {
-      console.error('❌ Social auth error:', error);
-      const errorMessage = getErrorMessage(error);
-      Alert.alert('Social Sign In Error', errorMessage);
-    } else if (data?.session) {
-      console.log('✅ Social auth successful');
+    if (result.error) {
+      console.error('❌ Social auth error:', result.error);
+      Alert.alert('Social Sign In Error', result.error);
+    } else if (result.success) {
       onAuthSuccess();
     } else {
-      console.log('❌ No session returned from social auth');
       Alert.alert(
         'Error',
         'Authentication completed but no session was created',

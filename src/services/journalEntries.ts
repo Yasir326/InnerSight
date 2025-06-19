@@ -60,25 +60,14 @@ class JournalEntriesService {
     entry: Omit<JournalEntry, 'id' | 'createdAt' | 'updatedAt'>,
   ): Promise<JournalEntry | null> {
     try {
-      console.log('💾 Starting journal entry save...');
       const userId = await getCurrentUserId();
       if (!userId) {
         console.error('❌ No authenticated user found');
         return null;
       }
 
-      console.log('👤 User ID found:', userId);
-      console.log('📝 Entry data:', {
-        title: entry.title,
-        contentLength: entry.content?.length || 0,
-        hasConversationData: !!entry.conversationData,
-        hasAnalysisData: !!entry.analysisData,
-      });
-
       const supabaseEntry = this.convertToSupabase(entry);
-      console.log('🔄 Converted to Supabase format');
 
-      console.log('📊 Inserting into database...');
       const {data, error} = await supabase
         .from(TABLES.JOURNAL_ENTRIES)
         .insert({
@@ -106,7 +95,6 @@ class JournalEntriesService {
           );
 
           // Try the direct save method as a fallback
-          console.log('🔄 Trying direct save method...');
           const directResult = await this.saveEntryDirectly(entry, userId);
 
           if (directResult) {
@@ -114,7 +102,6 @@ class JournalEntriesService {
           }
 
           // If direct save also failed, try raw SQL approach
-          console.log('🔧 Trying raw SQL method as final fallback...');
           return await this.saveEntryMinimal(entry, userId);
         }
 
@@ -141,7 +128,6 @@ class JournalEntriesService {
         return null;
       }
 
-      console.log('✅ Journal entry saved successfully');
       const savedEntry = this.convertFromSupabase(data);
 
       // Manually update streaks as a fallback in case database triggers failed
@@ -371,8 +357,6 @@ class JournalEntriesService {
     userId: string,
   ): Promise<JournalEntry | null> {
     try {
-      console.log('🔄 Attempting direct save without triggers...');
-
       // Use a very explicit insert to avoid any potential trigger conflicts
       const {data, error} = await supabase
         .from(TABLES.JOURNAL_ENTRIES)
@@ -395,7 +379,6 @@ class JournalEntriesService {
         return null;
       }
 
-      console.log('✅ Direct save successful');
       const savedEntry = this.convertFromSupabase(data);
 
       // Update streaks manually since we bypassed potential triggers
@@ -414,8 +397,6 @@ class JournalEntriesService {
     userId: string,
   ): Promise<JournalEntry | null> {
     try {
-      console.log('🔧 Attempting minimal data insert to bypass triggers...');
-
       // Save only essential fields to avoid triggering complex database functions
       const {data, error} = await supabase
         .from(TABLES.JOURNAL_ENTRIES)
@@ -437,7 +418,6 @@ class JournalEntriesService {
         return null;
       }
 
-      console.log('✅ Minimal data insert successful');
       const savedEntry = this.convertFromSupabase(data);
 
       // Try to update with the additional data in a separate call
@@ -447,7 +427,6 @@ class JournalEntriesService {
         entry.alternativePerspective ||
         entry.aiInsights
       ) {
-        console.log('🔄 Attempting to update with additional data...');
         try {
           const {error: updateError} = await supabase
             .from(TABLES.JOURNAL_ENTRIES)
@@ -464,8 +443,6 @@ class JournalEntriesService {
               '⚠️ Failed to update additional data, but entry was saved:',
               updateError,
             );
-          } else {
-            console.log('✅ Additional data updated successfully');
           }
         } catch (updateErr) {
           console.warn('⚠️ Exception updating additional data:', updateErr);
@@ -485,29 +462,19 @@ class JournalEntriesService {
   // Comprehensive streak update with multiple fallbacks
   private async updateUserStreaks(): Promise<void> {
     try {
-      console.log('🔄 Attempting to update user streaks...');
-
       // First try: Database function (might fail due to trigger issues)
       const dbFunctionSuccess = await recalculateUserStreaks();
       if (dbFunctionSuccess) {
-        console.log('✅ Streaks updated via database function');
         return;
       }
-
-      console.log(
-        '⚠️ Database function failed, trying client-side calculation...',
-      );
 
       // Second try: Client-side calculation and manual update
       const clientStreaks = await calculateStreaksFromEntries();
       const manualUpdateSuccess = await updateStreaksManually(clientStreaks);
 
-      if (manualUpdateSuccess) {
-        console.log('✅ Streaks updated via client-side calculation');
-        return;
+      if (!manualUpdateSuccess) {
+        console.warn('⚠️ All streak update methods failed');
       }
-
-      console.warn('⚠️ All streak update methods failed');
     } catch (error) {
       console.error('❌ Exception during streak update:', error);
     }

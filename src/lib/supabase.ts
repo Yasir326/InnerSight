@@ -4,21 +4,31 @@ import {createClient} from '@supabase/supabase-js';
 import {makeRedirectUri} from 'expo-auth-session';
 import * as QueryParams from 'expo-auth-session/build/QueryParams';
 import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 
 import {EXPO_PUBLIC_SUPABASE_URL, EXPO_PUBLIC_SUPABASE_ANON_KEY} from '@env';
 import {getErrorMessage} from '../utils/error';
 
+// Supabase client initialization
+const supabaseUrl = EXPO_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = EXPO_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('❌ Missing Supabase configuration');
+  throw new Error('Missing Supabase URL or anonymous key');
+}
+
 console.log('🔧 Supabase client initialization:');
-console.log('- URL:', EXPO_PUBLIC_SUPABASE_URL ? 'Set ✅' : 'Missing ❌');
-console.log('- Key:', EXPO_PUBLIC_SUPABASE_ANON_KEY ? 'Set ✅' : 'Missing ❌');
-console.log('- URL value:', EXPO_PUBLIC_SUPABASE_URL);
+console.log('- URL:', supabaseUrl ? 'Set ✅' : 'Missing ❌');
+console.log('- Key:', supabaseAnonKey ? 'Set ✅' : 'Missing ❌');
+console.log('- URL value:', supabaseUrl);
 
 // Required for web only
 WebBrowser.maybeCompleteAuthSession();
 
 export const supabase = createClient(
-  EXPO_PUBLIC_SUPABASE_URL,
-  EXPO_PUBLIC_SUPABASE_ANON_KEY,
+  supabaseUrl,
+  supabaseAnonKey,
   {
     auth: {
       storage: AsyncStorage,
@@ -176,44 +186,48 @@ export interface UserIdentitiesResult {
 }
 
 export const authHelpers = {
-  signUp: async (email: string, password: string, name?: string) => {
-    console.log('🚀 Starting signUp request...');
-    console.log('- Email:', email);
-    console.log('- Password length:', password.length);
-    console.log('- Name:', name);
-    console.log('- Supabase URL:', EXPO_PUBLIC_SUPABASE_URL);
-    console.log('- Supabase Key exists:', !!EXPO_PUBLIC_SUPABASE_ANON_KEY);
-
+  signUp: async (
+    email: string,
+    password: string,
+    name?: string,
+  ): Promise<{success: boolean; error?: string; user?: any}> => {
     try {
-      console.log('📡 Making Supabase auth.signUp call...');
-      const response = await supabase.auth.signUp({
+      const {data, error} = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
-            name: name ?? '',
+            name: name || '',
           },
         },
       });
 
-      console.log('📝 Raw Supabase response:', {
-        hasData: !!response.data,
-        hasError: !!response.error,
-        errorMessage: response.error?.message,
-        userData: response.data?.user
-          ? 'User object present'
-          : 'No user object',
-      });
+      if (error) {
+        console.error('❌ Supabase signUp error:', error);
+        return {
+          success: false,
+          error: error.message || 'Failed to create account',
+        };
+      }
 
-      return {data: response.data, error: response.error};
+      if (!data.user) {
+        console.error('❌ No user data returned from signUp');
+        return {
+          success: false,
+          error: 'Account creation failed - no user data returned',
+        };
+      }
+
+      return {
+        success: true,
+        user: data.user,
+      };
     } catch (error) {
-      console.error('💥 Network/Exception error in signUp:', error);
-      console.error('Error details:', {
-        name: error instanceof Error ? error.name : 'Unknown',
-        message: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : 'No stack trace',
-      });
-      return {data: null, error};
+      console.error('❌ Network/Exception error in signUp:', error);
+      return {
+        success: false,
+        error: 'Network error - please check your connection and try again',
+      };
     }
   },
 
@@ -229,10 +243,9 @@ export const authHelpers = {
     }
   },
 
-  signInWithProvider: async (provider: 'google' | 'apple') => {
+  signInWithOAuth: async (provider: 'google' | 'apple') => {
     try {
-      console.log('🚀 Starting OAuth flow for:', provider);
-      console.log('📍 Redirect URI:', redirectTo);
+      const redirectTo = Linking.createURL('/auth/callback');
 
       const {data, error} = await supabase.auth.signInWithOAuth({
         provider,
@@ -244,30 +257,32 @@ export const authHelpers = {
 
       if (error) {
         console.error('❌ OAuth initiation error:', error);
-        return {data: null, error};
+        return {success: false, error: error.message};
       }
 
       if (!data?.url) {
         console.error('❌ No OAuth URL returned');
-        return {data: null, error: new Error('No OAuth URL returned')};
+        return {success: false, error: 'OAuth initialization failed'};
       }
 
-      console.log('🌐 Opening OAuth URL:', data.url);
-
-      // Open the OAuth URL in a browser and wait for the callback
-      const res = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+      const res = await WebBrowser.openAuthSessionAsync(
+        data.url,
+        redirectTo,
+      );
 
       if (res.type === 'success') {
-        console.log('✅ OAuth flow completed successfully');
-        const session = await createSessionFromUrl(res.url);
-        return {data: {session}, error: null};
+        const {url} = res;
+        await parseAuthCallback(url);
+        return {success: true};
       } else {
-        console.log('❌ OAuth flow cancelled or failed:', res.type);
-        return {data: null, error: new Error('OAuth flow was cancelled')};
+        return {
+          success: false,
+          error: 'OAuth cancelled or failed',
+        };
       }
     } catch (error) {
-      console.error('💥 OAuth flow error:', error);
-      return {data: null, error};
+      console.error('❌ OAuth flow error:', error);
+      return {success: false, error: getErrorMessage(error)};
     }
   },
 

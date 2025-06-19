@@ -128,54 +128,53 @@ class StorageService {
 
   async isOnboardingComplete(): Promise<boolean> {
     try {
-      console.log('🔍 Starting onboarding completion check...');
-
       // Test database connectivity first
-      console.log('🌐 Testing database connectivity...');
-      const connectivityTest = await supabase
-        .from(TABLES.PROFILES)
-        .select('count')
+      const {error: connectError} = await supabase
+        .from('profiles')
+        .select('id')
         .limit(1);
 
-      if (connectivityTest.error) {
-        console.error(
-          '❌ Database connectivity test failed:',
-          connectivityTest.error,
-        );
+      if (connectError) {
+        console.error('❌ Database connectivity test failed:', connectError);
         return false;
       }
-      console.log('✅ Database connectivity test passed');
 
+      // Get current user
       const userId = await getCurrentUserId();
-      console.log('👤 Current user ID:', userId ? 'Found' : 'Not found');
-
       if (!userId) {
-        console.log('❌ No user ID, onboarding not complete');
         return false;
       }
 
-      console.log('📊 Querying onboarding data from Supabase...');
+      // Check if onboarding data exists in Supabase
       const {data, error} = await supabase
-        .from(TABLES.ONBOARDING_DATA)
-        .select('is_complete')
+        .from('onboarding_data')
+        .select('*')
         .eq('user_id', userId)
         .single();
 
       if (error) {
         if (error.code === 'PGRST116') {
-          // No data found, onboarding not complete
-          console.log('📋 No onboarding data found, not complete');
+          // No data found
           return false;
         }
-        console.error('❌ Error checking onboarding status:', error);
+        console.error('❌ Error checking onboarding completion:', error);
         return false;
       }
 
-      const isComplete = data.is_complete || false;
-      console.log('✅ Onboarding completion status:', isComplete);
+      // Check if all required fields are present
+      const isComplete = !!(
+        data &&
+        data.goals &&
+        Array.isArray(data.goals) &&
+        data.goals.length > 0 &&
+        data.challenges &&
+        Array.isArray(data.challenges) &&
+        data.challenges.length > 0
+      );
+
       return isComplete;
     } catch (error) {
-      console.error('💥 Error checking onboarding completion:', error);
+      console.error('❌ Exception checking onboarding completion:', error);
       return false;
     }
   }
