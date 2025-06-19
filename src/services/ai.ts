@@ -288,7 +288,6 @@ export async function analyseJournalEntry(entry: string): Promise<string> {
   – One gentle, open-ended question to help me explore the topic more deeply.
   
   
-  
   ${personalContext}${personalGuidance}
   
   Here's my entry:
