@@ -1,5 +1,6 @@
 import {journalEntriesService} from './journalEntries';
 import {safeAwait} from '../utils/safeAwait';
+import {capitalizeFirstLetter} from '../utils/string';
 
 export interface ThemeSummary {
   name: string;
@@ -104,12 +105,6 @@ export const getMostCommonTheme =
     return analytics.mostCommonTheme;
   };
 
-/**
- * Helper function to capitalize first letter
- */
-const capitalizeFirstLetter = (str: string): string => {
-  return str.charAt(0).toUpperCase() + str.slice(1);
-};
 
 /**
  * Gets an appropriate emoji for a theme

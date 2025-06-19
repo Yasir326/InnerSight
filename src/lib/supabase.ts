@@ -6,6 +6,7 @@ import * as QueryParams from 'expo-auth-session/build/QueryParams';
 import * as WebBrowser from 'expo-web-browser';
 
 import {EXPO_PUBLIC_SUPABASE_URL, EXPO_PUBLIC_SUPABASE_ANON_KEY} from '@env';
+import {getErrorMessage} from '../utils/error';
 
 console.log('🔧 Supabase client initialization:');
 console.log('- URL:', EXPO_PUBLIC_SUPABASE_URL ? 'Set ✅' : 'Missing ❌');
@@ -31,55 +32,37 @@ export const supabase = createClient(
 // Generate the redirect URI
 const redirectTo = makeRedirectUri();
 
+const parseAuthCallback = (url: string): Record<string, string | null> => {
+  const urlObj = new URL(url);
+  const hashParams = new URLSearchParams(urlObj.hash.substring(1));
+
+  if (hashParams.get('access_token') || hashParams.get('error')) {
+    return {
+      access_token: hashParams.get('access_token'),
+      refresh_token: hashParams.get('refresh_token'),
+      error: hashParams.get('error'),
+      error_description: hashParams.get('error_description'),
+    };
+  }
+
+  const {params, errorCode} = QueryParams.getQueryParams(url);
+  if (errorCode) {
+    return {
+      access_token: null,
+      refresh_token: null,
+      error: errorCode,
+      error_description: null,
+    };
+  }
+
+  return params as Record<string, string | null>;
+};
+
 export const createSessionFromUrl = async (url: string) => {
   console.log('🔗 Processing auth callback URL:', url);
 
-  // Parse both query params and hash params to handle different OAuth flows
-  const urlObj = new URL(url);
-
-  // Try hash params first (for some OAuth flows)
-  let params = new URLSearchParams(urlObj.hash.substring(1));
-
-  // If no hash params, try query params
-  if (!params.get('access_token') && !params.get('error')) {
-    const {params: queryParams, errorCode} = QueryParams.getQueryParams(url);
-
-    if (errorCode) {
-      console.error('❌ OAuth error:', errorCode);
-      throw new Error(errorCode);
-    }
-
-    const {access_token, refresh_token, error, error_description} = queryParams;
-
-    if (error) {
-      console.error('❌ OAuth error:', error, error_description);
-      throw new Error(error_description || error);
-    }
-
-    if (!access_token) {
-      console.log('ℹ️ No access token found in URL');
-      return null;
-    }
-
-    console.log('✅ Found tokens in query params');
-    const {data, error: sessionError} = await supabase.auth.setSession({
-      access_token,
-      refresh_token: refresh_token || '',
-    });
-
-    if (sessionError) {
-      console.error('❌ Session creation error:', sessionError);
-      throw sessionError;
-    }
-
-    return data.session;
-  }
-
-  // Handle hash params (original implementation)
-  const access_token = params.get('access_token');
-  const refresh_token = params.get('refresh_token');
-  const error = params.get('error');
-  const error_description = params.get('error_description');
+  const {access_token, refresh_token, error, error_description} =
+    parseAuthCallback(url);
 
   if (error) {
     console.error('❌ OAuth error:', error, error_description);
@@ -91,7 +74,7 @@ export const createSessionFromUrl = async (url: string) => {
     return null;
   }
 
-  console.log('✅ Found tokens in hash params');
+  console.log('✅ Found tokens in callback URL');
   const {data, error: sessionError} = await supabase.auth.setSession({
     access_token,
     refresh_token: refresh_token || '',
@@ -435,12 +418,7 @@ export const authHelpers = {
     try {
       const result = await authHelpers.getCurrentUser();
       if (result.error) {
-        const errorMessage =
-          result.error &&
-          typeof result.error === 'object' &&
-          'message' in result.error
-            ? (result.error as any).message
-            : '';
+        const errorMessage = getErrorMessage(result.error);
         if (
           errorMessage.includes('Auth session missing') ||
           errorMessage.includes('session_not_found')
