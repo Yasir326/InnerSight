@@ -36,6 +36,32 @@ const getAIConfig = (): AIProviderConfig => {
   return AI_CONFIG[AI_CONFIG.provider];
 };
 
+// Helper function to switch AI provider
+export const switchAIProvider = (provider: 'openai' | 'deepseek'): void => {
+  console.log(
+    `🔄 Switching AI provider from ${AI_CONFIG.provider} to ${provider}`,
+  );
+  AI_CONFIG.provider = provider;
+};
+
+// Helper function to get current provider info
+export const getCurrentAIProvider = (): {
+  provider: string;
+  model: string;
+  available: boolean;
+} => {
+  const config = getAIConfig();
+  const hasApiKey =
+    config.headers.Authorization !== 'Bearer undefined' &&
+    config.headers.Authorization !== 'Bearer null';
+
+  return {
+    provider: AI_CONFIG.provider,
+    model: config.model,
+    available: hasApiKey,
+  };
+};
+
 const buildPersonalizedContext = (
   onboardingData: OnboardingData | null,
 ): string => {
@@ -172,16 +198,9 @@ const extractContentFromResponse = (response: any): string | null => {
       return null;
     }
 
-    // Log the full response structure for debugging (but limit size)
-    const responseStr = JSON.stringify(response, null, 2);
-    if (responseStr.length > 2000) {
-      console.log(
-        'Response structure (truncated):',
-        responseStr.substring(0, 2000) + '...',
-      );
-    } else {
-      console.log('Response structure:', responseStr);
-    }
+    // Get current provider info for response handling
+    const currentProvider = AI_CONFIG.provider;
+    console.log('🤖 Current AI provider:', currentProvider);
 
     // Check if response has data property
     if (!response.data) {
@@ -191,7 +210,18 @@ const extractContentFromResponse = (response: any): string | null => {
 
     const data = response.data;
 
-    // Method 1: Standard OpenAI/DeepSeek format - choices[0].message.content
+    // Log response structure (limited for debugging)
+    const responseStr = JSON.stringify(data, null, 2);
+    if (responseStr.length > 1000) {
+      console.log(
+        'Response structure (truncated):',
+        responseStr.substring(0, 1000) + '...',
+      );
+    } else {
+      console.log('Response structure:', responseStr);
+    }
+
+    // Standard format for both OpenAI and DeepSeek: choices[0].message.content
     if (
       data.choices &&
       Array.isArray(data.choices) &&
@@ -201,48 +231,70 @@ const extractContentFromResponse = (response: any): string | null => {
       console.log('🔍 Found choices array, examining first choice...');
 
       if (choice.message) {
-        // For DeepSeek reasoner: content is the final answer, reasoning_content is the thinking process
-        // Priority: content (final answer) > reasoning_content (if content is empty)
-
-        if (
-          choice.message.content &&
-          typeof choice.message.content === 'string' &&
-          choice.message.content.trim() !== ''
-        ) {
-          console.log('✅ Found content in DeepSeek final answer format');
-          return choice.message.content.trim();
-        }
-
-        // DeepSeek reasoner fallback: if content is empty, try reasoning_content
-        // This happens when the model puts the JSON in reasoning_content instead of content
-        if (
-          choice.message.reasoning_content &&
-          typeof choice.message.reasoning_content === 'string'
-        ) {
-          console.log(
-            '✅ Found reasoning_content as fallback (content was empty)',
-          );
-
-          // Check if reasoning_content looks like it contains JSON
-          const reasoningContent = choice.message.reasoning_content.trim();
+        // Handle based on provider
+        if (currentProvider === 'openai') {
+          // OpenAI: Standard content field
           if (
-            reasoningContent.includes('{') &&
-            reasoningContent.includes('}')
+            choice.message.content &&
+            typeof choice.message.content === 'string'
+          ) {
+            console.log('✅ Found OpenAI content in message.content');
+            return choice.message.content.trim();
+          }
+        } else if (currentProvider === 'deepseek') {
+          // DeepSeek reasoner: content is the final answer, reasoning_content is the thinking process
+          // Priority: content (final answer) > reasoning_content (if content is empty)
+
+          if (
+            choice.message.content &&
+            typeof choice.message.content === 'string' &&
+            choice.message.content.trim() !== ''
+          ) {
+            console.log('✅ Found DeepSeek content in final answer format');
+            return choice.message.content.trim();
+          }
+
+          // DeepSeek reasoner fallback: if content is empty, try reasoning_content
+          // This happens when the model puts the JSON in reasoning_content instead of content
+          if (
+            choice.message.reasoning_content &&
+            typeof choice.message.reasoning_content === 'string'
           ) {
             console.log(
-              '🔍 Reasoning content appears to contain JSON structure',
+              '✅ Found DeepSeek reasoning_content as fallback (content was empty)',
             );
-            return reasoningContent;
-          } else {
-            console.log(
-              '⚠️ Reasoning content does not appear to contain JSON, may be truncated',
-            );
-            return reasoningContent;
+
+            // Check if reasoning_content looks like it contains JSON
+            const reasoningContent = choice.message.reasoning_content.trim();
+            if (
+              reasoningContent.includes('{') &&
+              reasoningContent.includes('}')
+            ) {
+              console.log(
+                '🔍 DeepSeek reasoning content appears to contain JSON structure',
+              );
+              return reasoningContent;
+            } else {
+              console.log(
+                '⚠️ DeepSeek reasoning content does not appear to contain JSON, may be truncated',
+              );
+              return reasoningContent;
+            }
           }
         }
 
-        // Log what we found in the message
+        // Fallback: try standard content field regardless of provider
+        if (
+          choice.message.content &&
+          typeof choice.message.content === 'string'
+        ) {
+          console.log('✅ Found content in standard message format (fallback)');
+          return choice.message.content.trim();
+        }
+
+        // Log what we found in the message for debugging
         console.log('🔍 Message structure:', {
+          provider: currentProvider,
           hasContent: !!choice.message.content,
           contentLength: choice.message.content?.length || 0,
           hasReasoningContent: !!choice.message.reasoning_content,
@@ -251,62 +303,57 @@ const extractContentFromResponse = (response: any): string | null => {
         });
       }
 
-      // Alternative: choices[0].text (some APIs use this)
+      // Alternative formats (some APIs use these)
       if (typeof choice.text === 'string') {
-        console.log('✅ Found content in text format');
+        console.log('✅ Found content in choice.text format');
         return choice.text.trim();
       }
 
-      // Alternative: choices[0].content (direct content)
       if (typeof choice.content === 'string') {
-        console.log('✅ Found content in direct choice format');
+        console.log('✅ Found content in direct choice.content format');
         return choice.content.trim();
       }
 
       console.log('🔍 Choice structure:', JSON.stringify(choice, null, 2));
     }
 
-    // Method 2: Direct content in data
+    // Alternative response formats (for other APIs)
     if (typeof data.content === 'string') {
-      console.log('✅ Found content in direct data format');
+      console.log('✅ Found content in direct data.content format');
       return data.content.trim();
     }
 
-    // Method 3: Message content directly in data
     if (data.message && typeof data.message.content === 'string') {
-      console.log('✅ Found content in direct message format');
+      console.log('✅ Found content in data.message.content format');
       return data.message.content.trim();
     }
 
-    // Method 4: Text property directly in data
     if (typeof data.text === 'string') {
-      console.log('✅ Found content in direct text format');
+      console.log('✅ Found content in data.text format');
       return data.text.trim();
     }
 
-    // Method 5: Response property (some APIs wrap in response)
     if (data.response && typeof data.response === 'string') {
-      console.log('✅ Found content in response wrapper');
+      console.log('✅ Found content in data.response format');
       return data.response.trim();
     }
 
-    // Method 6: Output property (some APIs use this)
     if (data.output && typeof data.output === 'string') {
-      console.log('✅ Found content in output format');
+      console.log('✅ Found content in data.output format');
       return data.output.trim();
     }
 
-    // Method 7: Check for nested structures
+    // Nested structures
     if (
       data.result &&
       data.result.content &&
       typeof data.result.content === 'string'
     ) {
-      console.log('✅ Found content in nested result format');
+      console.log('✅ Found content in nested data.result.content format');
       return data.result.content.trim();
     }
 
-    // Log all available properties for debugging
+    // Debug logging
     console.log('🔍 Available properties in data:', Object.keys(data));
     if (data.choices && data.choices[0]) {
       console.log(
@@ -361,6 +408,14 @@ export async function analyseJournalEntry(entry: string): Promise<string> {
   "${entry}"`;
 
   const config = getAIConfig();
+  const currentProvider = AI_CONFIG.provider;
+
+  console.log(`🔍 Analyzing journal entry with ${currentProvider}:`, {
+    provider: currentProvider,
+    model: config.model,
+    entryLength: entry.length,
+  });
+
   const [error, res] = await safeAwait(
     axios.post(
       config.baseURL,
@@ -376,15 +431,20 @@ export async function analyseJournalEntry(entry: string): Promise<string> {
   );
 
   if (error) {
-    console.error('❌ Error analyzing journal entry:', error);
+    console.error(
+      `❌ Error analyzing journal entry with ${currentProvider}:`,
+      error,
+    );
     return "I'm here to listen and support you. Sometimes it helps to simply acknowledge what you're feeling right now. What stands out most to you about this moment?";
   }
 
-  console.log('✅ AI response received, extracting content...');
+  console.log(`✅ ${currentProvider} response received, extracting content...`);
   const content = extractContentFromResponse(res);
 
   if (!content) {
-    console.error('❌ Failed to extract content from AI response');
+    console.error(
+      `❌ Failed to extract content from ${currentProvider} response`,
+    );
     return "I'm here to listen and support you. Sometimes it helps to simply acknowledge what you're feeling right now. What stands out most to you about this moment?";
   }
 
@@ -398,6 +458,14 @@ export async function generateTitleFromEntry(entry: string): Promise<string> {
   "${entry}"`;
 
   const config = getAIConfig();
+  const currentProvider = AI_CONFIG.provider;
+
+  console.log(`🔍 Generating title with ${currentProvider}:`, {
+    provider: currentProvider,
+    model: config.model,
+    entryLength: entry.length,
+  });
+
   const [error, res] = await safeAwait(
     axios.post(
       config.baseURL,
@@ -413,17 +481,21 @@ export async function generateTitleFromEntry(entry: string): Promise<string> {
   );
 
   if (error) {
-    console.error('❌ Error generating title:', error);
+    console.error(`❌ Error generating title with ${currentProvider}:`, error);
     // Return a fallback title based on current date
     const now = new Date();
     return `Journal Entry - ${now.toLocaleDateString()}`;
   }
 
-  console.log('✅ Title generation response received, extracting content...');
+  console.log(
+    `✅ ${currentProvider} title generation response received, extracting content...`,
+  );
   const content = extractContentFromResponse(res);
 
   if (!content) {
-    console.error('❌ Failed to extract title from AI response');
+    console.error(
+      `❌ Failed to extract title from ${currentProvider} response`,
+    );
     const now = new Date();
     return `Journal Entry - ${now.toLocaleDateString()}`;
   }
@@ -467,6 +539,17 @@ Journal entry:
 Provide only the alternative perspective, no other text.`;
 
   const config = getAIConfig();
+  const currentProvider = AI_CONFIG.provider;
+
+  console.log(
+    `🔍 Generating alternative perspective with ${currentProvider}:`,
+    {
+      provider: currentProvider,
+      model: config.model,
+      entryLength: entry.length,
+    },
+  );
+
   const [error, res] = await safeAwait(
     axios.post(
       config.baseURL,
@@ -482,18 +565,21 @@ Provide only the alternative perspective, no other text.`;
   );
 
   if (error) {
-    console.error('❌ Error generating alternative perspective:', error);
+    console.error(
+      `❌ Error generating alternative perspective with ${currentProvider}:`,
+      error,
+    );
     return 'Every experience, even difficult ones, offers opportunities for growth and self-understanding. Your willingness to reflect and seek different perspectives shows remarkable strength and wisdom. Consider how this moment might be teaching you something valuable about yourself or your resilience.';
   }
 
   console.log(
-    '✅ Alternative perspective response received, extracting content...',
+    `✅ ${currentProvider} alternative perspective response received, extracting content...`,
   );
   const content = extractContentFromResponse(res);
 
   if (!content) {
     console.error(
-      '❌ Failed to extract alternative perspective from AI response',
+      `❌ Failed to extract alternative perspective from ${currentProvider} response`,
     );
     return 'Every experience, even difficult ones, offers opportunities for growth and self-understanding. Your willingness to reflect and seek different perspectives shows remarkable strength and wisdom. Consider how this moment might be teaching you something valuable about yourself or your resilience.';
   }
@@ -855,55 +941,84 @@ Return only the JSON object:`;
   console.log('📊 Response status:', res.status);
   console.log('📊 Response headers:', res.headers);
 
-  // For DeepSeek reasoner, log both reasoning_content and content
+  // Provider-specific response handling
+  const currentProvider = AI_CONFIG.provider;
+  console.log('🤖 Handling response for provider:', currentProvider);
+
   if (res.data?.choices?.[0]?.message) {
     const message = res.data.choices[0].message;
     const choice = res.data.choices[0];
 
-    console.log('🔍 DeepSeek response analysis:', {
-      hasContent: !!message.content,
-      contentLength: message.content?.length || 0,
-      hasReasoningContent: !!message.reasoning_content,
-      reasoningContentLength: message.reasoning_content?.length || 0,
-      finishReason: choice.finish_reason,
-    });
+    if (currentProvider === 'deepseek') {
+      // DeepSeek-specific response analysis
+      console.log('🔍 DeepSeek response analysis:', {
+        hasContent: !!message.content,
+        contentLength: message.content?.length || 0,
+        hasReasoningContent: !!message.reasoning_content,
+        reasoningContentLength: message.reasoning_content?.length || 0,
+        finishReason: choice.finish_reason,
+      });
 
-    // Check if response was truncated
-    if (choice.finish_reason === 'length') {
-      console.warn('⚠️ Response was truncated due to token limit');
+      // Check if DeepSeek response was truncated
+      if (choice.finish_reason === 'length') {
+        console.warn('⚠️ DeepSeek response was truncated due to token limit');
 
-      // If content is empty but reasoning_content exists, the JSON might be in reasoning_content
-      if (
-        (!message.content || message.content.trim() === '') &&
-        message.reasoning_content
-      ) {
-        console.log(
-          '🔄 Attempting to extract JSON from truncated reasoning_content...',
-        );
+        // If content is empty but reasoning_content exists, the JSON might be in reasoning_content
+        if (
+          (!message.content || message.content.trim() === '') &&
+          message.reasoning_content
+        ) {
+          console.log(
+            '🔄 Attempting to extract JSON from truncated DeepSeek reasoning_content...',
+          );
 
-        // Try to find a complete JSON object in reasoning_content
-        const reasoningContent = message.reasoning_content;
-        const jsonMatch = reasoningContent.match(/\{[\s\S]*\}/);
+          // Try to find a complete JSON object in reasoning_content
+          const reasoningContent = message.reasoning_content;
+          const jsonMatch = reasoningContent.match(/\{[\s\S]*\}/);
 
-        if (jsonMatch) {
-          console.log('🎯 Found JSON-like structure in reasoning_content');
-          try {
-            // Try to parse it to see if it's valid
-            JSON.parse(jsonMatch[0]);
-            console.log('✅ JSON in reasoning_content is valid');
-            // We'll let the normal extraction process handle this
-          } catch (parseError) {
+          if (jsonMatch) {
+            console.log(
+              '🎯 Found JSON-like structure in DeepSeek reasoning_content',
+            );
+            try {
+              // Try to parse it to see if it's valid
+              JSON.parse(jsonMatch[0]);
+              console.log('✅ JSON in DeepSeek reasoning_content is valid');
+              // We'll let the normal extraction process handle this
+            } catch (parseError) {
+              console.warn(
+                '⚠️ JSON in DeepSeek reasoning_content is malformed, using fallback',
+              );
+              return getFallbackAnalysisData();
+            }
+          } else {
             console.warn(
-              '⚠️ JSON in reasoning_content is malformed, using fallback',
+              '⚠️ No JSON structure found in truncated DeepSeek reasoning_content, using fallback',
             );
             return getFallbackAnalysisData();
           }
-        } else {
-          console.warn(
-            '⚠️ No JSON structure found in truncated reasoning_content, using fallback',
-          );
-          return getFallbackAnalysisData();
         }
+      }
+    } else if (currentProvider === 'openai') {
+      // OpenAI-specific response analysis
+      console.log('🔍 OpenAI response analysis:', {
+        hasContent: !!message.content,
+        contentLength: message.content?.length || 0,
+        finishReason: choice.finish_reason,
+      });
+
+      // Check if OpenAI response was truncated
+      if (choice.finish_reason === 'length') {
+        console.warn('⚠️ OpenAI response was truncated due to token limit');
+        console.warn(
+          '🔄 Consider increasing max_tokens for complete responses',
+        );
+      }
+
+      // OpenAI doesn't have reasoning_content, so if content is empty, it's an error
+      if (!message.content || message.content.trim() === '') {
+        console.error('❌ OpenAI response has empty content field');
+        return getFallbackAnalysisData();
       }
     }
   }
@@ -911,7 +1026,9 @@ Return only the JSON object:`;
   const rawContent = extractContentFromResponse(res);
 
   if (!rawContent) {
-    console.error('❌ Failed to extract content from analysis response');
+    console.error(
+      `❌ Failed to extract content from ${currentProvider} analysis response`,
+    );
     console.error(
       '📋 Full response data for debugging:',
       JSON.stringify(res.data, null, 2),
@@ -947,18 +1064,21 @@ Return only the JSON object:`;
     const analysisData = validateAndNormalizeAnalysisData(parsedData);
 
     console.log(
-      '✅ Successfully parsed and validated analysis data:',
+      `✅ Successfully parsed and validated ${currentProvider} analysis data:`,
       analysisData,
     );
     return analysisData;
   } catch (parseError) {
-    console.error('❌ Error parsing AI analysis response:', parseError);
+    console.error(
+      `❌ Error parsing ${currentProvider} analysis response:`,
+      parseError,
+    );
     console.error('📄 Raw response was:', rawContent);
 
     // Check if this was a truncation issue
     if (res.data?.choices?.[0]?.finish_reason === 'length') {
       console.error(
-        '💔 Response was truncated, this likely caused the JSON parsing error',
+        `💔 ${currentProvider} response was truncated, this likely caused the JSON parsing error`,
       );
     }
 
