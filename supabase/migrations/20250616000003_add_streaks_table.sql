@@ -40,7 +40,7 @@ DECLARE
   new_current_streak INTEGER := 0;
   new_longest_streak INTEGER := 0;
   total_days INTEGER := 0;
-  streak_percentage INTEGER := 0;
+  calc_streak_percentage INTEGER := 0;
   unique_dates DATE[];
   last_date DATE;
   days_diff INTEGER;
@@ -103,7 +103,7 @@ BEGIN
   
   -- Calculate streak percentage (last 30 days)
   SELECT COUNT(DISTINCT DATE(created_at)) * 100 / 30
-  INTO streak_percentage
+  INTO calc_streak_percentage
   FROM journal_entries 
   WHERE user_id = NEW.user_id 
     AND created_at >= CURRENT_DATE - INTERVAL '30 days';
@@ -123,7 +123,7 @@ BEGIN
       new_current_streak,
       new_longest_streak,
       total_days,
-      LEAST(streak_percentage, 100),
+      LEAST(calc_streak_percentage, 100),
       entry_date,
       NOW()
     );
@@ -132,7 +132,7 @@ BEGIN
       current_streak = new_current_streak,
       longest_streak = GREATEST(user_streak_record.longest_streak, new_longest_streak),
       total_days_with_entries = total_days,
-      streak_percentage = LEAST(streak_percentage, 100),
+      streak_percentage = LEAST(calc_streak_percentage, 100),
       last_entry_date = entry_date,
       streak_updated_at = NOW(),
       updated_at = NOW()
@@ -167,7 +167,7 @@ DECLARE
   new_current_streak INTEGER := 0;
   new_longest_streak INTEGER := 0;
   total_days INTEGER := 0;
-  streak_percentage INTEGER := 0;
+  calc_streak_percentage INTEGER := 0;
   unique_dates DATE[];
   last_date DATE;
   days_diff INTEGER;
@@ -223,7 +223,7 @@ BEGIN
   
   -- Calculate streak percentage (last 30 days)
   SELECT COUNT(DISTINCT DATE(created_at)) * 100 / 30
-  INTO streak_percentage
+  INTO calc_streak_percentage
   FROM journal_entries 
   WHERE user_id = target_user_id 
     AND created_at >= CURRENT_DATE - INTERVAL '30 days';
@@ -242,7 +242,7 @@ BEGIN
     new_current_streak,
     new_longest_streak,
     total_days,
-    LEAST(streak_percentage, 100),
+    LEAST(calc_streak_percentage, 100),
     unique_dates[1],
     NOW()
   )
