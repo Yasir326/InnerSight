@@ -8,6 +8,7 @@ import * as Linking from 'expo-linking';
 
 import {EXPO_PUBLIC_SUPABASE_URL, EXPO_PUBLIC_SUPABASE_ANON_KEY} from '@env';
 import {getErrorMessage} from '../utils/error';
+import {sleep} from '../utils/sleep';
 
 // Supabase client initialization
 const supabaseUrl = EXPO_PUBLIC_SUPABASE_URL;
@@ -286,7 +287,7 @@ export const authHelpers = {
           console.log('✅ OAuth session established successfully');
 
           // Wait a bit more to ensure session is fully propagated
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await sleep(500);
 
           return {success: true, session};
         } else {
