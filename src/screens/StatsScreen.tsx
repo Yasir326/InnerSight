@@ -7,6 +7,7 @@ import {
   ScrollView,
   Platform,
 } from 'react-native';
+import {baseFontFamily} from '../utils/platform';
 
 const mockStats = {
   totalTime: '2h 30m',
@@ -84,7 +85,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
     color: '#000000',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   scrollView: {
     flex: 1,
@@ -110,12 +111,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#000000',
     marginBottom: 6,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   statLabel: {
     fontSize: 13,
     color: '#888888',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   sectionContainer: {
     marginBottom: 24,
@@ -125,7 +126,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#000000',
     marginBottom: 12,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   activityCard: {
     backgroundColor: '#F5F5F7',
@@ -137,12 +138,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#000000',
     marginBottom: 4,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   activitySubtext: {
     fontSize: 13,
     color: '#888888',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   insightCard: {
     backgroundColor: '#F5F5F7',
@@ -156,13 +157,13 @@ const styles = StyleSheet.create({
   insightTitle: {
     fontSize: 15,
     color: '#000000',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   insightValue: {
     fontSize: 15,
     fontWeight: '500',
     color: '#000000',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
 });
 

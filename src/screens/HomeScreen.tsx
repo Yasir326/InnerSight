@@ -18,6 +18,7 @@ import {journalEntriesService, JournalEntry} from '../services/journalEntries';
 import {safeAwait} from '../utils/safeAwait';
 import {getUserName} from '../services/onboarding';
 import {getMostCommonEmotion, getEmotionEmoji, type EmotionSummary} from '../services/emotionAnalytics';
+import {baseFontFamily} from '../utils/platform';
 import {getMostCommonTheme, getThemeEmoji, type ThemeSummary} from '../services/themeAnalytics';
 import {getStreakEmoji, getStreakMessage, type StreakSummary, analyzeUserStreaks} from '../services/streakAnalytics';
 import { Path } from 'react-native-svg';
@@ -376,7 +377,7 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     color: '#666666',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   listContent: {
     paddingBottom: 100,
@@ -399,13 +400,13 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '600',
     color: '#000000',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   headerSubtitle: {
     fontSize: 14,
     color: '#666666',
     marginTop: 2,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   menuButton: {
     position: 'absolute',
@@ -430,12 +431,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#000000',
     marginBottom: 4,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   comparison: {
     fontSize: 14,
     color: '#666666',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   analyticsSection: {
     backgroundColor: '#FFFFFF',
@@ -466,7 +467,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#666666',
     letterSpacing: 0.5,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   categoryCount: {
     backgroundColor: '#E0E0E0',
@@ -478,7 +479,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#000000',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   categoriesGrid: {
     gap: 12,
@@ -509,13 +510,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: '#000000',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   categoryValue: {
     fontSize: 12,
     color: '#666666',
     marginTop: 2,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   streakMessage: {
     alignSelf: 'center',
@@ -530,7 +531,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#000000',
     textAlign: 'center',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   entriesSection: {
 
@@ -578,14 +579,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#000000',
     marginBottom: 4,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   entryDescription: {
     fontSize: 14,
     color: '#666666',
     lineHeight: 20,
     marginBottom: 8,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   entryMeta: {
     marginBottom: 12,
@@ -593,13 +594,13 @@ const styles = StyleSheet.create({
   entryLocation: {
     fontSize: 12,
     color: '#999999',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   entryDate: {
     fontSize: 12,
     fontWeight: '600',
     color: '#999999',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   entryActions: {
     flexDirection: 'row',
@@ -630,14 +631,14 @@ const styles = StyleSheet.create({
     color: '#000000',
     textAlign: 'center',
     marginBottom: 8,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   emptyText: {
     fontSize: 14,
     color: '#666666',
     textAlign: 'center',
     lineHeight: 20,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   newEntryButton: {
     position: 'absolute',
@@ -662,7 +663,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 24,
     fontWeight: '300',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
 });
 

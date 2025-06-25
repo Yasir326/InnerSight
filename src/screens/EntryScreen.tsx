@@ -18,6 +18,7 @@ import {analyseJournalEntry, generateTitleFromEntry} from '../services/ai';
 import {safeAwait} from '../utils/safeAwait';
 import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {baseFontFamily} from '../utils/platform';
 import type {RootStackParamList} from '../navigation/AppNavigator';
 import {
   journalEntriesService,
@@ -331,7 +332,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     lineHeight: 26,
     color: '#000000',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   aiContainer: {
     flexDirection: 'row',
@@ -348,7 +349,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     lineHeight: 26,
     color: '#007AFF',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
     flex: 1,
   },
   loadingContainer: {
@@ -365,7 +366,7 @@ const styles = StyleSheet.create({
     color: '#000000',
     padding: 0,
     textAlignVertical: 'top',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
     minHeight: 100,
   },
   spacer: {

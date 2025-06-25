@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Platform,
 } from 'react-native';
+import {baseFontFamily} from '../utils/platform';
 
 const mockResults = {
   tasks: [
@@ -73,7 +74,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
     color: '#000000',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   content: {
     padding: 20,
@@ -86,7 +87,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#000000',
     marginBottom: 16,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   taskItem: {
     flexDirection: 'row',
@@ -120,13 +121,13 @@ const styles = StyleSheet.create({
   taskText: {
     fontSize: 17,
     color: '#000000',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   taskTextDone: {
     fontSize: 17,
     color: '#888888',
     textDecorationLine: 'line-through',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
 });
 

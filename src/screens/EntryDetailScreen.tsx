@@ -17,6 +17,7 @@ import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../navigation/AppNavigator';
 import {journalEntriesService} from '../services/journalEntries';
 import {safeAwait} from '../utils/safeAwait';
+import {baseFontFamily} from '../utils/platform';
 import { Path, Circle, G } from 'react-native-svg';
 import Svg from 'react-native-svg';
 
@@ -185,7 +186,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
     color: '#000000',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   backButton: {
     paddingVertical: 4,
@@ -194,7 +195,7 @@ const styles = StyleSheet.create({
   backButtonText: {
     fontSize: 17,
     color: '#007AFF',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   placeholder: {
     width: 50,
@@ -212,7 +213,7 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 17,
     color: '#888888',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   scrollView: {
     flex: 1,
@@ -224,14 +225,14 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#888888',
     marginBottom: 8,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   title: {
     fontSize: 22,
     fontWeight: 'bold',
     color: '#000000',
     marginBottom: 24,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   entryContainer: {
     marginBottom: 24,
@@ -240,7 +241,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     lineHeight: 26,
     color: '#000000',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   aiContainer: {
     flexDirection: 'row',
@@ -257,7 +258,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     lineHeight: 26,
     color: '#007AFF',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
     flex: 1,
   },
   footer: {

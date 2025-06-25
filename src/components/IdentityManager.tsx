@@ -12,6 +12,7 @@ import Svg, {Path} from 'react-native-svg';
 import {authHelpers} from '../lib/supabase';
 import {safeAwait} from '../utils/safeAwait';
 import {supabase} from '../lib/supabase';
+import {baseFontFamily} from '../utils/platform';
 
 // Use Supabase's UserIdentity type directly
 type UserIdentity = {
@@ -402,21 +403,21 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     fontSize: 14,
     color: '#666666',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   title: {
     fontSize: 16,
     fontWeight: '600',
     color: '#000000',
     marginBottom: 4,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   subtitle: {
     fontSize: 14,
     color: '#666666',
     lineHeight: 20,
     marginBottom: 20,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   identitiesContainer: {
     marginBottom: 24,
@@ -451,12 +452,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#000000',
     marginBottom: 2,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   identityEmail: {
     fontSize: 14,
     color: '#666666',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   unlinkButton: {
     padding: 8,
@@ -473,7 +474,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#666666',
     marginBottom: 12,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   linkButton: {
     flexDirection: 'row',
@@ -502,7 +503,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     color: '#000000',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   linkButtonAction: {
     padding: 4,
@@ -512,7 +513,7 @@ const styles = StyleSheet.create({
     color: '#666666',
     lineHeight: 16,
     textAlign: 'center',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
 });
 
