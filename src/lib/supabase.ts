@@ -18,10 +18,6 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase URL or anonymous key');
 }
 
-console.log('🔧 Supabase client initialization:');
-console.log('- URL:', supabaseUrl ? 'Set ✅' : 'Missing ❌');
-console.log('- Key:', supabaseAnonKey ? 'Set ✅' : 'Missing ❌');
-console.log('- URL value:', supabaseUrl);
 
 // Required for web only
 WebBrowser.maybeCompleteAuthSession();
@@ -69,7 +65,6 @@ const parseAuthCallback = (url: string): Record<string, string | null> => {
 };
 
 export const createSessionFromUrl = async (url: string) => {
-  console.log('🔗 Processing auth callback URL:', url);
 
   const {access_token, refresh_token, error, error_description} =
     parseAuthCallback(url);
@@ -80,11 +75,9 @@ export const createSessionFromUrl = async (url: string) => {
   }
 
   if (!access_token) {
-    console.log('ℹ️ No access token found in URL');
     return null;
   }
 
-  console.log('✅ Found tokens in callback URL');
   const {data, error: sessionError} = await supabase.auth.setSession({
     access_token,
     refresh_token: refresh_token || '',
@@ -185,6 +178,26 @@ export interface UserIdentitiesResult {
   error: any;
 }
 
+const refreshSession = async () => {
+  try {
+    const {data, error} = await supabase.auth.refreshSession();
+    if (error) {
+      console.error('❌ Error refreshing session:', error);
+      if (
+        String(error.message).toLowerCase().includes('revoked') ||
+        String(error.message).toLowerCase().includes('invalid')
+      ) {
+        await supabase.auth.signOut();
+      }
+      return {session: null, error};
+    }
+    return {session: data.session, error: null};
+  } catch (error) {
+    console.error('💥 Exception refreshing session:', error);
+    return {session: null, error};
+  }
+};
+
 export const authHelpers = {
   signUp: async (
     email: string,
@@ -272,14 +285,18 @@ export const authHelpers = {
 
       if (res.type === 'success') {
         const {url} = res;
-        await parseAuthCallback(url);
-        return {success: true};
-      } else {
-        return {
-          success: false,
-          error: 'OAuth cancelled or failed',
-        };
+        const session = await createSessionFromUrl(url);
+        if (session) {
+          return {success: true};
+        }
+        return {success: false, error: 'Authentication completed but no session'};
       }
+
+      if (res.type === 'dismiss' || res.type === 'cancel') {
+        return {success: false, error: 'OAuth flow cancelled'};
+      }
+
+      return {success: false, error: 'OAuth flow failed'};
     } catch (error) {
       console.error('❌ OAuth flow error:', error);
       return {success: false, error: getErrorMessage(error)};
@@ -289,8 +306,6 @@ export const authHelpers = {
   // Identity Linking Functions
   linkIdentity: async (provider: 'google' | 'apple') => {
     try {
-      console.log('🔗 Starting identity linking for:', provider);
-      console.log('📍 Redirect URI:', redirectTo);
 
       const {data, error} = await supabase.auth.linkIdentity({
         provider,
@@ -313,17 +328,17 @@ export const authHelpers = {
         };
       }
 
-      console.log('🌐 Opening identity linking URL:', data.url);
+      
 
       // Open the OAuth URL in a browser and wait for the callback
       const res = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
 
       if (res.type === 'success') {
-        console.log('✅ Identity linking completed successfully');
+        
         const session = await createSessionFromUrl(res.url);
         return {data: {session}, error: null};
       } else {
-        console.log('❌ Identity linking cancelled or failed:', res.type);
+        
         return {data: null, error: new Error('Identity linking was cancelled')};
       }
     } catch (error) {
@@ -334,7 +349,6 @@ export const authHelpers = {
 
   getUserIdentities: async () => {
     try {
-      console.log('🔍 Fetching user identities...');
       const {data, error} = await supabase.auth.getUserIdentities();
 
       if (error) {
@@ -342,11 +356,7 @@ export const authHelpers = {
         return {identities: null, error};
       }
 
-      console.log(
-        '✅ User identities fetched successfully:',
-        data?.identities?.length || 0,
-        'identities',
-      );
+      
       return {identities: data?.identities || [], error: null};
     } catch (error) {
       console.error('💥 Error fetching user identities:', error);
@@ -356,7 +366,6 @@ export const authHelpers = {
 
   unlinkIdentity: async (identity: any) => {
     try {
-      console.log('🔓 Unlinking identity:', identity.provider);
       const {data, error} = await supabase.auth.unlinkIdentity(identity);
 
       if (error) {
@@ -364,7 +373,7 @@ export const authHelpers = {
         return {data: null, error};
       }
 
-      console.log('✅ Identity unlinked successfully');
+      
       return {data, error: null};
     } catch (error) {
       console.error('💥 Error unlinking identity:', error);
@@ -372,10 +381,10 @@ export const authHelpers = {
     }
   },
 
+
   // Add password to OAuth account
   addPassword: async (password: string) => {
     try {
-      console.log('🔐 Adding password to OAuth account...');
       const {data, error} = await supabase.auth.updateUser({
         password: password,
       });
@@ -385,7 +394,7 @@ export const authHelpers = {
         return {data: null, error};
       }
 
-      console.log('✅ Password added successfully');
+      
       return {data, error: null};
     } catch (error) {
       console.error('💥 Error adding password:', error);
@@ -402,20 +411,34 @@ export const authHelpers = {
     }
   },
 
+  refreshSession,
+
   getCurrentUser: async () => {
     try {
-      console.log('🔍 Getting current user from Supabase...');
-      const {data, error} = await Promise.race([
+      let {data, error} = await Promise.race([
         supabase.auth.getUser(),
         new Promise<{data: any; error: any}>((_, reject) =>
           setTimeout(() => reject(new Error('getCurrentUser timeout')), 8000),
         ),
       ]);
+
+      if (error &&
+          (String(error.message).includes('JWT expired') ||
+           String(error.message).includes('expired token'))
+      ) {
+        const {error: refreshError} = await authHelpers.refreshSession();
+        if (refreshError) {
+          console.error('❌ Session refresh failed:', refreshError);
+          return {user: null, error: refreshError};
+        }
+        ({data, error} = await supabase.auth.getUser());
+      }
+
       if (error) {
         console.error('❌ Error getting current user:', error);
         return {user: null, error};
       }
-      console.log('✅ Current user retrieved:', !!data?.user);
+
       return {user: data?.user || null, error: null};
     } catch (error) {
       console.error('💥 Error in getCurrentUser:', error);
@@ -429,7 +452,6 @@ export const authHelpers = {
   },
 
   isAuthenticated: async () => {
-    console.log('🔍 Starting authentication check...');
     try {
       const result = await authHelpers.getCurrentUser();
       if (result.error) {
@@ -438,17 +460,14 @@ export const authHelpers = {
           errorMessage.includes('Auth session missing') ||
           errorMessage.includes('session_not_found')
         ) {
-          console.log('ℹ️ No active session found (user not logged in)');
+          
           return false;
         }
         console.error('❌ Authentication check failed:', result.error);
         return false;
       }
       const isAuth = !!result.user;
-      console.log(
-        '✅ Authentication check complete:',
-        isAuth ? 'User authenticated' : 'No user session',
-      );
+      
       return isAuth;
     } catch (error) {
       console.error('❌ Authentication check failed:', error);
@@ -472,14 +491,12 @@ export const authHelpers = {
 
 export const getCurrentUserId = async (): Promise<string | null> => {
   try {
-    console.log('🔍 Getting current user ID...');
     const result = await authHelpers.getCurrentUser();
     if (result.error) {
       console.error('❌ Error getting current user ID:', result.error);
       return null;
     }
     const userId = result.user?.id || null;
-    console.log('👤 Current user ID result:', userId ? 'Found' : 'Not found');
     return userId;
   } catch (error) {
     console.error('💥 Error getting current user ID:', error);
