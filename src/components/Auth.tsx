@@ -15,6 +15,7 @@ import {
 import Svg, {Path} from 'react-native-svg';
 import {authHelpers} from '../lib/supabase';
 import {getErrorMessage} from '../utils/error';
+import {sleep} from '../utils/sleep';
 
 const baseFontFamily = Platform.OS === 'ios' ? 'System' : 'normal';
 
@@ -279,7 +280,7 @@ export const Auth: React.FC<AuthProps> = ({onAuthSuccess}) => {
                       );
 
                       // Add a small delay to ensure session is fully established
-                      await new Promise(resolve => setTimeout(resolve, 1000));
+                      await sleep(1000);
 
                       onAuthSuccess();
                     } else {
@@ -324,7 +325,7 @@ export const Auth: React.FC<AuthProps> = ({onAuthSuccess}) => {
       );
 
       // Add a small delay to ensure session is fully established
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await sleep(1000);
 
       onAuthSuccess();
     } else {

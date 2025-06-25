@@ -11,6 +11,7 @@ import {
 import Svg, {Path} from 'react-native-svg';
 import {authHelpers} from '../lib/supabase';
 import {safeAwait} from '../utils/safeAwait';
+import {sleep} from '../utils/sleep';
 import {supabase} from '../lib/supabase';
 
 // Use Supabase's UserIdentity type directly
@@ -111,7 +112,7 @@ export const IdentityManager: React.FC<IdentityManagerProps> = ({
           console.log('⚠️ No session found, retrying...', retryCount + 1);
           retryCount++;
           if (retryCount < maxRetries) {
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+            await sleep(1000); // Wait 1 second
             continue;
           } else {
             console.error('❌ No session available after retries');
@@ -140,7 +141,7 @@ export const IdentityManager: React.FC<IdentityManagerProps> = ({
               retryCount + 1,
             );
             retryCount++;
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+            await sleep(1000); // Wait 1 second
             continue;
           }
 
@@ -155,7 +156,7 @@ export const IdentityManager: React.FC<IdentityManagerProps> = ({
         console.error('Unexpected error in loadIdentities:', error);
         if (retryCount < maxRetries - 1) {
           retryCount++;
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await sleep(1000);
           continue;
         } else {
           Alert.alert('Error', 'Failed to load linked accounts');
