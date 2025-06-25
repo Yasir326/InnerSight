@@ -18,22 +18,17 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase URL or anonymous key');
 }
 
-
 // Required for web only
 WebBrowser.maybeCompleteAuthSession();
 
-export const supabase = createClient(
-  supabaseUrl,
-  supabaseAnonKey,
-  {
-    auth: {
-      storage: AsyncStorage,
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: false,
-    },
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    storage: AsyncStorage,
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: false,
   },
-);
+});
 
 // Generate the redirect URI
 const redirectTo = makeRedirectUri();
@@ -65,7 +60,6 @@ const parseAuthCallback = (url: string): Record<string, string | null> => {
 };
 
 export const createSessionFromUrl = async (url: string) => {
-
   const {access_token, refresh_token, error, error_description} =
     parseAuthCallback(url);
 
@@ -178,25 +172,26 @@ export interface UserIdentitiesResult {
   error: any;
 }
 
-const refreshSession = async () => {
-  try {
-    const {data, error} = await supabase.auth.refreshSession();
-    if (error) {
-      console.error('❌ Error refreshing session:', error);
-      if (
-        String(error.message).toLowerCase().includes('revoked') ||
-        String(error.message).toLowerCase().includes('invalid')
-      ) {
-        await supabase.auth.signOut();
-      }
-      return {session: null, error};
-    }
-    return {session: data.session, error: null};
-  } catch (error) {
-    console.error('💥 Exception refreshing session:', error);
-    return {session: null, error};
-  }
-};
+// Authentication state interfaces
+export interface AuthenticationResult {
+  authenticated: boolean;
+  needsReauth?: boolean;
+  error?: string;
+  user?: any;
+  recovered?: boolean;
+  recoveryAttempted?: boolean;
+}
+
+export interface SessionRefreshResult {
+  success: boolean;
+  error?: string;
+  session?: any;
+}
+
+export interface SessionClearResult {
+  success: boolean;
+  error?: string;
+}
 
 export const authHelpers = {
   signUp: async (
@@ -278,25 +273,32 @@ export const authHelpers = {
         return {success: false, error: 'OAuth initialization failed'};
       }
 
-      const res = await WebBrowser.openAuthSessionAsync(
-        data.url,
-        redirectTo,
-      );
+      const res = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
 
       if (res.type === 'success') {
         const {url} = res;
+        console.log('🔗 Processing OAuth callback...');
+
+        // Process the callback and wait for session to be established
         const session = await createSessionFromUrl(url);
+
         if (session) {
-          return {success: true};
+          console.log('✅ OAuth session established successfully');
+
+          // Wait a bit more to ensure session is fully propagated
+          await new Promise(resolve => setTimeout(resolve, 500));
+
+          return {success: true, session};
+        } else {
+          console.error('❌ Failed to establish session from OAuth callback');
+          return {success: false, error: 'Failed to establish session'};
         }
-        return {success: false, error: 'Authentication completed but no session'};
+      } else {
+        return {
+          success: false,
+          error: 'OAuth cancelled or failed',
+        };
       }
-
-      if (res.type === 'dismiss' || res.type === 'cancel') {
-        return {success: false, error: 'OAuth flow cancelled'};
-      }
-
-      return {success: false, error: 'OAuth flow failed'};
     } catch (error) {
       console.error('❌ OAuth flow error:', error);
       return {success: false, error: getErrorMessage(error)};
@@ -306,7 +308,6 @@ export const authHelpers = {
   // Identity Linking Functions
   linkIdentity: async (provider: 'google' | 'apple') => {
     try {
-
       const {data, error} = await supabase.auth.linkIdentity({
         provider,
         options: {
@@ -328,17 +329,13 @@ export const authHelpers = {
         };
       }
 
-      
-
       // Open the OAuth URL in a browser and wait for the callback
       const res = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
 
       if (res.type === 'success') {
-        
         const session = await createSessionFromUrl(res.url);
         return {data: {session}, error: null};
       } else {
-        
         return {data: null, error: new Error('Identity linking was cancelled')};
       }
     } catch (error) {
@@ -349,6 +346,27 @@ export const authHelpers = {
 
   getUserIdentities: async () => {
     try {
+      console.log('🔍 Fetching user identities...');
+
+      // First check if we have a valid session
+      const {
+        data: {session},
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError) {
+        console.error('❌ Session error:', sessionError);
+        return {identities: null, error: sessionError};
+      }
+
+      if (!session) {
+        console.error('❌ No active session found');
+        return {
+          identities: null,
+          error: new Error('No active session. Please sign in again.'),
+        };
+      }
+
       const {data, error} = await supabase.auth.getUserIdentities();
 
       if (error) {
@@ -356,7 +374,6 @@ export const authHelpers = {
         return {identities: null, error};
       }
 
-      
       return {identities: data?.identities || [], error: null};
     } catch (error) {
       console.error('💥 Error fetching user identities:', error);
@@ -373,14 +390,12 @@ export const authHelpers = {
         return {data: null, error};
       }
 
-      
       return {data, error: null};
     } catch (error) {
       console.error('💥 Error unlinking identity:', error);
       return {data: null, error};
     }
   },
-
 
   // Add password to OAuth account
   addPassword: async (password: string) => {
@@ -394,11 +409,66 @@ export const authHelpers = {
         return {data: null, error};
       }
 
-      
       return {data, error: null};
     } catch (error) {
       console.error('💥 Error adding password:', error);
       return {data: null, error};
+    }
+  },
+
+  // Check if account exists with given email
+  checkAccountExists: async (
+    email: string,
+  ): Promise<{exists: boolean; error?: string}> => {
+    try {
+      console.log('🔍 Checking if account exists for email:', email);
+
+      // Try to sign in with a dummy password to check if account exists
+      // This will fail but give us information about whether the account exists
+      const {error} = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password: 'dummy-password-for-check',
+      });
+
+      if (error) {
+        const errorMessage = error.message.toLowerCase();
+
+        // If the error indicates invalid credentials, the account exists
+        if (
+          errorMessage.includes('invalid login credentials') ||
+          errorMessage.includes('wrong password') ||
+          errorMessage.includes('invalid password')
+        ) {
+          console.log('✅ Account exists for email:', email);
+          return {exists: true};
+        }
+
+        // If the error indicates user not found, account doesn't exist
+        if (
+          errorMessage.includes('user not found') ||
+          errorMessage.includes('email not found') ||
+          errorMessage.includes('no user found')
+        ) {
+          console.log('ℹ️ No account found for email:', email);
+          return {exists: false};
+        }
+
+        // For other errors, assume account doesn't exist
+        console.log(
+          'ℹ️ Assuming no account exists due to error:',
+          error.message,
+        );
+        return {exists: false};
+      }
+
+      // If no error (which shouldn't happen with dummy password), assume exists
+      console.log(
+        '⚠️ Unexpected success with dummy password - assuming account exists',
+      );
+      return {exists: true};
+    } catch (error) {
+      console.error('💥 Error checking account existence:', error);
+      return {exists: false, error: getErrorMessage(error)};
     }
   },
 
@@ -411,8 +481,6 @@ export const authHelpers = {
     }
   },
 
-  refreshSession,
-
   getCurrentUser: async () => {
     try {
       let {data, error} = await Promise.race([
@@ -422,9 +490,10 @@ export const authHelpers = {
         ),
       ]);
 
-      if (error &&
-          (String(error.message).includes('JWT expired') ||
-           String(error.message).includes('expired token'))
+      if (
+        error &&
+        (String(error.message).includes('JWT expired') ||
+          String(error.message).includes('expired token'))
       ) {
         const {error: refreshError} = await authHelpers.refreshSession();
         if (refreshError) {
@@ -451,7 +520,8 @@ export const authHelpers = {
     return user;
   },
 
-  isAuthenticated: async () => {
+  isAuthenticated: async (): Promise<boolean | AuthenticationResult> => {
+    console.log('🔍 Starting authentication check...');
     try {
       const result = await authHelpers.getCurrentUser();
       if (result.error) {
@@ -460,18 +530,41 @@ export const authHelpers = {
           errorMessage.includes('Auth session missing') ||
           errorMessage.includes('session_not_found')
         ) {
-          
-          return false;
+          console.log(
+            'ℹ️ No active session found, attempting to refresh session...',
+          );
+
+          // Try to refresh the session
+          const refreshResult = await authHelpers.refreshSession();
+          if (refreshResult.success) {
+            console.log('✅ Session refreshed successfully');
+            return true;
+          } else {
+            console.log('ℹ️ Session refresh failed - user needs to re-login');
+            return {
+              authenticated: false,
+              needsReauth: true,
+              error: 'Session expired. Please log in again.',
+            };
+          }
         }
         console.error('❌ Authentication check failed:', result.error);
-        return false;
+        return {
+          authenticated: false,
+          needsReauth: false,
+          error: errorMessage,
+        };
       }
       const isAuth = !!result.user;
-      
+
       return isAuth;
     } catch (error) {
       console.error('❌ Authentication check failed:', error);
-      return false;
+      return {
+        authenticated: false,
+        needsReauth: false,
+        error: getErrorMessage(error),
+      };
     }
   },
 
@@ -485,6 +578,118 @@ export const authHelpers = {
       return {data, error};
     } catch (error) {
       return {data: null, error};
+    }
+  },
+
+  // New method to refresh session
+  refreshSession: async (): Promise<SessionRefreshResult> => {
+    try {
+      console.log('🔄 Attempting to refresh session...');
+      const {data, error} = await supabase.auth.refreshSession();
+
+      if (error) {
+        console.error('❌ Session refresh failed:', error);
+        return {
+          success: false,
+          error: error.message,
+        };
+      }
+
+      if (data?.session) {
+        console.log('✅ Session refreshed successfully');
+        return {
+          success: true,
+          session: data.session,
+        };
+      } else {
+        console.log('❌ No session returned from refresh');
+        return {
+          success: false,
+          error: 'No session returned from refresh',
+        };
+      }
+    } catch (error) {
+      console.error('💥 Error refreshing session:', error);
+      return {
+        success: false,
+        error: getErrorMessage(error),
+      };
+    }
+  },
+
+  // Enhanced method to check auth state with recovery options
+  checkAuthWithRecovery: async (): Promise<AuthenticationResult> => {
+    console.log('🔍 Starting enhanced authentication check...');
+    try {
+      // First, try to get the current user
+      const result = await authHelpers.getCurrentUser();
+
+      if (result.error) {
+        const errorMessage = getErrorMessage(result.error);
+
+        if (
+          errorMessage.includes('Auth session missing') ||
+          errorMessage.includes('session_not_found') ||
+          errorMessage.includes('JWT expired')
+        ) {
+          console.log('⚠️ Session issue detected, attempting recovery...');
+
+          // Try to refresh the session
+          const refreshResult = await authHelpers.refreshSession();
+
+          if (refreshResult.success) {
+            console.log('✅ Session recovered successfully');
+            return {
+              authenticated: true,
+              recovered: true,
+              user: refreshResult.session?.user,
+            };
+          } else {
+            console.log('❌ Session recovery failed');
+            return {
+              authenticated: false,
+              needsReauth: true,
+              error: 'Your session has expired. Please log in again.',
+              recoveryAttempted: true,
+            };
+          }
+        }
+
+        // Other auth errors
+        return {
+          authenticated: false,
+          needsReauth: false,
+          error: errorMessage,
+        };
+      }
+
+      // Success case
+      const isAuth = !!result.user;
+      return {
+        authenticated: isAuth,
+        user: result.user,
+        needsReauth: false,
+      };
+    } catch (error) {
+      console.error('💥 Enhanced auth check failed:', error);
+      return {
+        authenticated: false,
+        needsReauth: false,
+        error: getErrorMessage(error),
+      };
+    }
+  },
+
+  // Method to clear invalid session and prepare for re-auth
+  clearInvalidSession: async (): Promise<SessionClearResult> => {
+    try {
+      console.log('🧹 Clearing invalid session...');
+      await supabase.auth.signOut();
+      console.log('✅ Invalid session cleared');
+      return {success: true};
+    } catch (error) {
+      console.error('❌ Error clearing invalid session:', error);
+      return {success: false, error: getErrorMessage(error)};
     }
   },
 };
@@ -539,5 +744,159 @@ export const ensureUserProfile = async (): Promise<Profile | null> => {
   } catch (error) {
     console.error('Error ensuring user profile:', error);
     return null;
+  }
+};
+
+/**
+ * Enhanced authentication helper that handles session recovery and provides
+ * clear guidance for re-authentication when needed.
+ *
+ * @param options Configuration options for authentication handling
+ * @returns Promise with authentication result and recommended actions
+ */
+export const handleAuthenticationWithRecovery = async (options?: {
+  clearInvalidSession?: boolean;
+}): Promise<
+  AuthenticationResult & {
+    recommendedAction?: 'none' | 'refresh' | 'relogin' | 'clear_and_relogin';
+  }
+> => {
+  const {clearInvalidSession = true} = options || {};
+
+  console.log('🔐 Starting comprehensive authentication check...');
+
+  try {
+    // Use the enhanced auth check method
+    const authResult = await authHelpers.checkAuthWithRecovery();
+
+    if (authResult.authenticated) {
+      return {
+        ...authResult,
+        recommendedAction: 'none',
+      };
+    }
+
+    // Handle different failure scenarios
+    if (authResult.needsReauth) {
+      if (clearInvalidSession) {
+        console.log(
+          '🧹 Clearing invalid session before recommending re-login...',
+        );
+        await authHelpers.clearInvalidSession();
+      }
+
+      return {
+        ...authResult,
+        recommendedAction: 'relogin',
+      };
+    }
+
+    // For other auth failures, recommend clearing session and re-login
+    if (clearInvalidSession) {
+      await authHelpers.clearInvalidSession();
+    }
+
+    return {
+      ...authResult,
+      recommendedAction: 'clear_and_relogin',
+    };
+  } catch (error) {
+    console.error('💥 Comprehensive auth check failed:', error);
+
+    if (clearInvalidSession) {
+      await authHelpers.clearInvalidSession();
+    }
+
+    return {
+      authenticated: false,
+      needsReauth: true,
+      error: getErrorMessage(error),
+      recommendedAction: 'clear_and_relogin',
+    };
+  }
+};
+
+/**
+ * Utility to check if user needs to re-authenticate and get user-friendly message
+ */
+export const getAuthenticationStatus = async (): Promise<{
+  isAuthenticated: boolean;
+  needsAction: boolean;
+  message?: string;
+  actionType?: 'login' | 'refresh' | 'error';
+}> => {
+  const result = await handleAuthenticationWithRecovery();
+
+  if (result.authenticated) {
+    return {
+      isAuthenticated: true,
+      needsAction: false,
+    };
+  }
+
+  switch (result.recommendedAction) {
+    case 'relogin':
+    case 'clear_and_relogin':
+      return {
+        isAuthenticated: false,
+        needsAction: true,
+        message:
+          result.error || 'Your session has expired. Please log in again.',
+        actionType: 'login',
+      };
+    case 'refresh':
+      return {
+        isAuthenticated: false,
+        needsAction: true,
+        message: 'Refreshing your session...',
+        actionType: 'refresh',
+      };
+    default:
+      return {
+        isAuthenticated: false,
+        needsAction: true,
+        message: result.error || 'Authentication error occurred.',
+        actionType: 'error',
+      };
+  }
+};
+
+/**
+ * Utility function for components to check authentication and handle re-login flow
+ * This is a simpler alternative to the more complex handleAuthenticationWithRecovery
+ *
+ * @returns Object with authentication status and user-friendly guidance
+ */
+export const checkAuthForComponent = async (): Promise<{
+  isAuthenticated: boolean;
+  needsReauth: boolean;
+  message?: string;
+  user?: any;
+}> => {
+  try {
+    const authResult = await authHelpers.isAuthenticated();
+
+    // Handle boolean response (legacy)
+    if (typeof authResult === 'boolean') {
+      return {
+        isAuthenticated: authResult,
+        needsReauth: !authResult,
+        message: authResult ? undefined : 'Please log in to continue',
+      };
+    }
+
+    // Handle AuthenticationResult response (new)
+    return {
+      isAuthenticated: authResult.authenticated,
+      needsReauth: authResult.needsReauth || false,
+      message: authResult.error,
+      user: authResult.user,
+    };
+  } catch (error) {
+    return {
+      isAuthenticated: false,
+      needsReauth: true,
+      message: 'Authentication check failed. Please try logging in again.',
+    };
   }
 };

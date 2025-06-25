@@ -87,7 +87,7 @@ const AppNavigator: React.FC = () => {
       try {
         setLoadingMessage('Checking authentication...');
 
-        const [authError, authenticated] = await safeAwait(
+        const [authError, authResult] = await safeAwait(
           authHelpers.isAuthenticated(),
         );
 
@@ -96,6 +96,22 @@ const AppNavigator: React.FC = () => {
           setIsAuthenticated(false);
           setIsLoading(false);
           return;
+        }
+
+        // Handle the new authentication response format
+        let authenticated: boolean;
+        if (typeof authResult === 'boolean') {
+          authenticated = authResult;
+        } else {
+          // authResult is AuthenticationResult
+          authenticated = authResult.authenticated;
+
+          // If authentication failed and user needs to re-authenticate
+          if (!authenticated && authResult.needsReauth) {
+            console.log('🔄 Session expired, user needs to re-authenticate');
+            // You could show a toast/alert here if desired
+            // Alert.alert('Session Expired', authResult.error || 'Please log in again');
+          }
         }
 
         setIsAuthenticated(authenticated);
@@ -108,7 +124,10 @@ const AppNavigator: React.FC = () => {
           );
 
           if (onboardingError) {
-            console.error('❌ Error checking onboarding status:', onboardingError);
+            console.error(
+              '❌ Error checking onboarding status:',
+              onboardingError,
+            );
             setOnboardingComplete(false);
           } else {
             setOnboardingComplete(complete);
@@ -134,9 +153,12 @@ const AppNavigator: React.FC = () => {
       console.log('📋 Checking onboarding status after auth success...');
       const complete = await Promise.race([
         storageService.isOnboardingComplete(),
-        new Promise<boolean>((_, reject) => 
-          setTimeout(() => reject(new Error('Onboarding check timeout')), 10000)
-        )
+        new Promise<boolean>((_, reject) =>
+          setTimeout(
+            () => reject(new Error('Onboarding check timeout')),
+            10000,
+          ),
+        ),
       ]);
       console.log('✅ Onboarding status retrieved:', complete);
       setOnboardingComplete(complete);

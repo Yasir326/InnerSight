@@ -1,20 +1,8 @@
 import {journalEntriesService} from './journalEntries';
 import {safeAwait} from '../utils/safeAwait';
 import {capitalizeFirstLetter} from '../utils/string';
+import { EmotionAnalytics, EmotionSummary } from '../types/types';
 
-export interface EmotionSummary {
-  name: string;
-  totalPercentage: number;
-  averagePercentage: number;
-  occurrences: number;
-  color: string;
-}
-
-export interface EmotionAnalytics {
-  mostCommonEmotion: EmotionSummary | null;
-  totalEntries: number;
-  emotionBreakdown: EmotionSummary[];
-}
 
 /**
  * Analyzes all journal entries to find emotion patterns

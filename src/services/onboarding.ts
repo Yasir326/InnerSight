@@ -2,18 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { safeAwait } from '../utils/safeAwait';
 import { storageService } from './storage';
 import { getCurrentUserId, supabase } from '../lib/supabase';
-
-export interface OnboardingData {
-  userName: string;
-  goals: string[];
-  challenges: string[];
-  reflections: {
-    current_state: string;
-    ideal_self: string;
-    biggest_obstacle: string;
-  };
-  completedAt: string;
-}
+import { OnboardingData } from '../types/types';
 
 // Legacy AsyncStorage keys for backward compatibility
 const ONBOARDING_KEY = '@journal_onboarding_data';

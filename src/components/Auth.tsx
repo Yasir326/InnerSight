@@ -99,6 +99,114 @@ export const Auth: React.FC<AuthProps> = ({onAuthSuccess}) => {
   const [loading, setLoading] = useState(false);
   const [socialLoading, setSocialLoading] = useState<string | null>(null);
 
+  const checkForExistingAccount = async (email: string) => {
+    try {
+      const result = await authHelpers.checkAccountExists(email);
+      return result.exists;
+    } catch (error) {
+      console.error('Error checking for existing account:', error);
+      return false;
+    }
+  };
+
+  const handleAccountLinking = async (email: string) => {
+    const isIOS = Platform.OS === 'ios';
+    const providers = isIOS
+      ? [
+          {name: 'Google', provider: 'google' as const},
+          {name: 'Apple', provider: 'apple' as const},
+        ]
+      : [{name: 'Google', provider: 'google' as const}];
+
+    const providerOptions = providers
+      .map(p => `• Sign in with ${p.name} and add a password`)
+      .join('\n');
+
+    Alert.alert(
+      'Account Already Exists',
+      `An account with ${email} already exists. Would you like to:\n\n${providerOptions}\n• Continue creating a new separate account`,
+      [
+        ...providers.map(({name, provider}) => ({
+          text: `Use ${name} Account`,
+          onPress: async () => {
+            // Sign in with the selected provider
+            setSocialLoading(provider);
+            const result = await authHelpers.signInWithOAuth(provider);
+            setSocialLoading(null);
+
+            if (result.success) {
+              // After successful OAuth sign-in, offer to add password
+              Alert.alert(
+                'Add Password',
+                `Would you like to add a password to your ${name} account for easier sign-in?`,
+                [
+                  {text: 'Skip', onPress: () => onAuthSuccess()},
+                  {
+                    text: 'Add Password',
+                    onPress: async () => {
+                      const addResult = await authHelpers.addPassword(password);
+                      if (addResult.error) {
+                        Alert.alert(
+                          'Error',
+                          'Failed to add password. You can add one later in settings.',
+                        );
+                      } else {
+                        Alert.alert('Success', 'Password added successfully!');
+                      }
+                      onAuthSuccess();
+                    },
+                  },
+                ],
+              );
+            } else {
+              Alert.alert(
+                'Error',
+                result.error || `Failed to sign in with ${name}`,
+              );
+            }
+          },
+        })),
+        {
+          text: 'Create New Account',
+          style: 'destructive',
+          onPress: () => {
+            // Continue with original sign-up flow
+            proceedWithEmailSignUp(email, password, name);
+          },
+        },
+        {text: 'Cancel', style: 'cancel'},
+      ],
+    );
+  };
+
+  const proceedWithEmailSignUp = async (
+    email: string,
+    password: string,
+    name: string,
+  ) => {
+    try {
+      const result = await authHelpers.signUp(
+        email.trim(),
+        password,
+        name.trim(),
+      );
+
+      if (result.error) {
+        console.error('❌ Sign up error:', result.error);
+        Alert.alert('Sign Up Error', result.error);
+      } else {
+        Alert.alert(
+          'Account Created!',
+          "We've sent a verification email to your inbox. Please click the link in the email to verify your account, then return here to sign in.",
+          [{text: 'OK', onPress: () => setIsSignUp(false)}],
+        );
+      }
+    } catch (error) {
+      console.error('❌ Auth error:', error);
+      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+    }
+  };
+
   const handleAuth = async () => {
     if (!email.trim() || !password.trim()) {
       Alert.alert('Error', 'Please fill in all fields');
@@ -117,26 +225,90 @@ export const Auth: React.FC<AuthProps> = ({onAuthSuccess}) => {
 
     setLoading(true);
 
-    if (isSignUp) {
-      const result = await authHelpers.signUp(
-        email.trim(),
-        password,
-        name.trim(),
-      );
+    try {
+      if (isSignUp) {
+        // Check if account with this email already exists
+        const existingAccount = await checkForExistingAccount(email.trim());
 
-      if (result.error) {
-        console.error('❌ Sign up error:', result.error);
-        Alert.alert('Sign Up Error', result.error);
+        if (existingAccount) {
+          setLoading(false);
+          handleAccountLinking(email.trim());
+          return;
+        }
+
+        // Proceed with normal sign-up
+        await proceedWithEmailSignUp(email.trim(), password, name.trim());
       } else {
-        Alert.alert(
-          'Account Created!',
-          "We've sent a verification email to your inbox. Please click the link in the email to verify your account, then return here to sign in.",
-          [{text: 'OK', onPress: () => setIsSignUp(false)}],
-        );
-      }
-    }
+        // Handle Sign In
+        const {data, error} = await authHelpers.signIn(email.trim(), password);
 
-    setLoading(false);
+        if (error) {
+          console.error('❌ Sign in error:', error);
+
+          // Check if this might be an OAuth account trying to sign in with email/password
+          if (getErrorMessage(error).includes('Invalid login credentials')) {
+            const isIOS = Platform.OS === 'ios';
+            const providers = isIOS
+              ? [
+                  {name: 'Google', provider: 'google' as const},
+                  {name: 'Apple', provider: 'apple' as const},
+                ]
+              : [{name: 'Google', provider: 'google' as const}];
+
+            const providerSuggestions = providers.map(p => p.name).join(' or ');
+            const suggestionText =
+              providers.length > 1
+                ? `This email might be associated with a ${providerSuggestions} account.\n\nWould you like to try signing in with one of these providers instead?`
+                : `This email might be associated with a ${providerSuggestions} account.\n\nWould you like to try signing in with ${providerSuggestions} instead?`;
+
+            Alert.alert(
+              'Sign In Failed',
+              `Unable to sign in with email and password. ${suggestionText}`,
+              [
+                {text: 'Cancel', style: 'cancel'},
+                ...providers.map(({name, provider}) => ({
+                  text: `Sign in with ${name}`,
+                  onPress: async () => {
+                    setSocialLoading(provider);
+                    const result = await authHelpers.signInWithOAuth(provider);
+                    setSocialLoading(null);
+
+                    if (result.success) {
+                      console.log(
+                        '✅ OAuth suggestion successful, waiting for session to stabilize...',
+                      );
+
+                      // Add a small delay to ensure session is fully established
+                      await new Promise(resolve => setTimeout(resolve, 1000));
+
+                      onAuthSuccess();
+                    } else {
+                      Alert.alert(
+                        'Error',
+                        result.error || `Failed to sign in with ${name}`,
+                      );
+                    }
+                  },
+                })),
+              ],
+            );
+          } else {
+            const errorMessage = getErrorMessage(error);
+            Alert.alert('Sign In Error', errorMessage);
+          }
+        } else if (data?.user) {
+          console.log('✅ Sign in successful');
+          onAuthSuccess();
+        } else {
+          Alert.alert('Error', 'Sign in failed - no user data returned');
+        }
+      }
+    } catch (error) {
+      console.error('❌ Auth error:', error);
+      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSocialAuth = async (provider: 'google' | 'apple') => {
@@ -147,6 +319,13 @@ export const Auth: React.FC<AuthProps> = ({onAuthSuccess}) => {
       console.error('❌ Social auth error:', result.error);
       Alert.alert('Social Sign In Error', result.error);
     } else if (result.success) {
+      console.log(
+        '✅ Social auth successful, waiting for session to stabilize...',
+      );
+
+      // Add a small delay to ensure session is fully established
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
       onAuthSuccess();
     } else {
       Alert.alert(

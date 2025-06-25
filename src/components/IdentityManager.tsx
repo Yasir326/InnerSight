@@ -11,6 +11,7 @@ import {
 import Svg, {Path} from 'react-native-svg';
 import {authHelpers} from '../lib/supabase';
 import {safeAwait} from '../utils/safeAwait';
+import {supabase} from '../lib/supabase';
 
 // Use Supabase's UserIdentity type directly
 type UserIdentity = {
@@ -94,13 +95,73 @@ export const IdentityManager: React.FC<IdentityManagerProps> = ({
 
   const loadIdentities = useCallback(async () => {
     setLoading(true);
-    const [error, result] = await safeAwait(authHelpers.getUserIdentities());
 
-    if (error) {
-      console.error('Error loading identities:', error);
-      Alert.alert('Error', 'Failed to load linked accounts');
-    } else {
-      setIdentities((result?.identities || []) as UserIdentity[]);
+    // Add retry logic for session timing issues
+    const maxRetries = 3;
+    let retryCount = 0;
+
+    while (retryCount < maxRetries) {
+      try {
+        // First check if we have a valid session
+        const {
+          data: {session},
+        } = await supabase.auth.getSession();
+
+        if (!session) {
+          console.log('⚠️ No session found, retrying...', retryCount + 1);
+          retryCount++;
+          if (retryCount < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+            continue;
+          } else {
+            console.error('❌ No session available after retries');
+            Alert.alert(
+              'Error',
+              'Please sign in again to manage linked accounts',
+            );
+            setLoading(false);
+            return;
+          }
+        }
+
+        // Now try to get identities
+        const [error, result] = await safeAwait(
+          authHelpers.getUserIdentities(),
+        );
+
+        if (error) {
+          // Check if it's a session error and we can retry
+          if (
+            error.message?.includes('Auth session missing') &&
+            retryCount < maxRetries - 1
+          ) {
+            console.log(
+              '⚠️ Session missing error, retrying...',
+              retryCount + 1,
+            );
+            retryCount++;
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+            continue;
+          }
+
+          console.error('Error loading identities:', error);
+          Alert.alert('Error', 'Failed to load linked accounts');
+        } else {
+          setIdentities((result?.identities || []) as UserIdentity[]);
+        }
+
+        break; // Success, exit retry loop
+      } catch (error) {
+        console.error('Unexpected error in loadIdentities:', error);
+        if (retryCount < maxRetries - 1) {
+          retryCount++;
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          continue;
+        } else {
+          Alert.alert('Error', 'Failed to load linked accounts');
+          break;
+        }
+      }
     }
 
     setLoading(false);

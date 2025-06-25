@@ -24,6 +24,7 @@
     "expo-auth-session": "^6.2.0",
     "expo-linking": "^7.1.5",
     "expo-web-browser": "^14.1.6",
+    "jsonwebtoken": "^9.0.2",
     "metro-core": "^0.82.3",
     "metro-runtime": "^0.82.3",
     "react": "19.0.0",
