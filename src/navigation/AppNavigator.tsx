@@ -28,10 +28,6 @@ import AccountScreen from '../screens/AccountScreen';
 import {storageService} from '../services/storage';
 import * as SupabaseModule from '../lib/supabase';
 
-// Debug the import
-console.log('🔍 Supabase module contents:', Object.keys(SupabaseModule));
-console.log('🔍 authHelpers type:', typeof SupabaseModule.authHelpers);
-
 const {authHelpers} = SupabaseModule;
 
 export type RootStackParamList = {
@@ -108,7 +104,9 @@ const AppNavigator: React.FC = () => {
 
           // If authentication failed and user needs to re-authenticate
           if (!authenticated && authResult.needsReauth) {
-            console.log('🔄 Session expired, user needs to re-authenticate');
+            if (__DEV__) {
+              console.log('🔄 Session expired, user needs to re-authenticate');
+            }
             // You could show a toast/alert here if desired
             // Alert.alert('Session Expired', authResult.error || 'Please log in again');
           }
@@ -146,11 +144,15 @@ const AppNavigator: React.FC = () => {
   }, []);
 
   const handleAuthSuccess = async () => {
-    console.log('🎉 Auth success callback triggered');
+    if (__DEV__) {
+      console.log('🎉 Auth success callback triggered');
+    }
     setIsAuthenticated(true);
     // Check onboarding status after successful auth
     try {
-      console.log('📋 Checking onboarding status after auth success...');
+      if (__DEV__) {
+        console.log('📋 Checking onboarding status after auth success...');
+      }
       const complete = await Promise.race([
         storageService.isOnboardingComplete(),
         new Promise<boolean>((_, reject) =>
@@ -160,7 +162,9 @@ const AppNavigator: React.FC = () => {
           ),
         ),
       ]);
-      console.log('✅ Onboarding status retrieved:', complete);
+      if (__DEV__) {
+        console.log('✅ Onboarding status retrieved:', complete);
+      }
       setOnboardingComplete(complete);
     } catch (error) {
       console.error('❌ Error checking onboarding status:', error);
@@ -171,19 +175,25 @@ const AppNavigator: React.FC = () => {
 
   // Show loading screen during initial setup
   if (isLoading) {
-    console.log('⏳ Showing loading screen:', loadingMessage);
+    if (__DEV__) {
+      console.log('⏳ Showing loading screen:', loadingMessage);
+    }
     return <LoadingScreen message={loadingMessage} />;
   }
 
   // Show loading state while checking auth status
   if (isAuthenticated === null) {
-    console.log('⏳ Auth status still null, showing loading...');
+    if (__DEV__) {
+      console.log('⏳ Auth status still null, showing loading...');
+    }
     return <LoadingScreen message="Checking authentication..." />;
   }
 
   // If not authenticated, show auth screen
   if (!isAuthenticated) {
-    console.log('🔐 Showing auth screen');
+    if (__DEV__) {
+      console.log('🔐 Showing auth screen');
+    }
     return (
       <NavigationContainer>
         <Stack.Navigator screenOptions={{headerShown: false}}>
@@ -197,11 +207,18 @@ const AppNavigator: React.FC = () => {
 
   // If authenticated but onboarding status is still loading
   if (onboardingComplete === null) {
-    console.log('⏳ Onboarding status still loading...');
+    if (__DEV__) {
+      console.log('⏳ Onboarding status still loading...');
+    }
     return <LoadingScreen message="Setting up your experience..." />;
   }
 
-  console.log('🚀 Showing main app, onboarding complete:', onboardingComplete);
+  if (__DEV__) {
+    console.log(
+      '🚀 Showing main app, onboarding complete:',
+      onboardingComplete,
+    );
+  }
 
   return (
     <NavigationContainer>

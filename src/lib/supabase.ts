@@ -277,13 +277,17 @@ export const authHelpers = {
 
       if (res.type === 'success') {
         const {url} = res;
-        console.log('🔗 Processing OAuth callback...');
+        if (__DEV__) {
+          console.log('🔗 Processing OAuth callback...');
+        }
 
         // Process the callback and wait for session to be established
         const session = await createSessionFromUrl(url);
 
         if (session) {
-          console.log('✅ OAuth session established successfully');
+          if (__DEV__) {
+            console.log('✅ OAuth session established successfully');
+          }
 
           // Wait a bit more to ensure session is fully propagated
           await new Promise(resolve => setTimeout(resolve, 500));
@@ -346,7 +350,9 @@ export const authHelpers = {
 
   getUserIdentities: async () => {
     try {
-      console.log('🔍 Fetching user identities...');
+      if (__DEV__) {
+        console.log('🔍 Fetching user identities...');
+      }
 
       // First check if we have a valid session
       const {
@@ -421,7 +427,9 @@ export const authHelpers = {
     email: string,
   ): Promise<{exists: boolean; error?: string}> => {
     try {
-      console.log('🔍 Checking if account exists for email:', email);
+      if (__DEV__) {
+        console.log('🔍 Checking if account exists for email:', email);
+      }
 
       // Try to sign in with a dummy password to check if account exists
       // This will fail but give us information about whether the account exists
@@ -439,7 +447,9 @@ export const authHelpers = {
           errorMessage.includes('wrong password') ||
           errorMessage.includes('invalid password')
         ) {
-          console.log('✅ Account exists for email:', email);
+          if (__DEV__) {
+            console.log('✅ Account exists for email:', email);
+          }
           return {exists: true};
         }
 
@@ -449,22 +459,28 @@ export const authHelpers = {
           errorMessage.includes('email not found') ||
           errorMessage.includes('no user found')
         ) {
-          console.log('ℹ️ No account found for email:', email);
+          if (__DEV__) {
+            console.log('ℹ️ No account found for email:', email);
+          }
           return {exists: false};
         }
 
         // For other errors, assume account doesn't exist
-        console.log(
-          'ℹ️ Assuming no account exists due to error:',
-          error.message,
-        );
+        if (__DEV__) {
+          console.log(
+            'ℹ️ Assuming no account exists due to error:',
+            error.message,
+          );
+        }
         return {exists: false};
       }
 
       // If no error (which shouldn't happen with dummy password), assume exists
-      console.log(
-        '⚠️ Unexpected success with dummy password - assuming account exists',
-      );
+      if (__DEV__) {
+        console.log(
+          '⚠️ Unexpected success with dummy password - assuming account exists',
+        );
+      }
       return {exists: true};
     } catch (error) {
       console.error('💥 Error checking account existence:', error);
@@ -521,7 +537,9 @@ export const authHelpers = {
   },
 
   isAuthenticated: async (): Promise<boolean | AuthenticationResult> => {
-    console.log('🔍 Starting authentication check...');
+    if (__DEV__) {
+      console.log('🔍 Starting authentication check...');
+    }
     try {
       const result = await authHelpers.getCurrentUser();
       if (result.error) {
@@ -530,17 +548,23 @@ export const authHelpers = {
           errorMessage.includes('Auth session missing') ||
           errorMessage.includes('session_not_found')
         ) {
-          console.log(
-            'ℹ️ No active session found, attempting to refresh session...',
-          );
+          if (__DEV__) {
+            console.log(
+              'ℹ️ No active session found, attempting to refresh session...',
+            );
+          }
 
           // Try to refresh the session
           const refreshResult = await authHelpers.refreshSession();
           if (refreshResult.success) {
-            console.log('✅ Session refreshed successfully');
+            if (__DEV__) {
+              console.log('✅ Session refreshed successfully');
+            }
             return true;
           } else {
-            console.log('ℹ️ Session refresh failed - user needs to re-login');
+            if (__DEV__) {
+              console.log('ℹ️ Session refresh failed - user needs to re-login');
+            }
             return {
               authenticated: false,
               needsReauth: true,
@@ -584,7 +608,9 @@ export const authHelpers = {
   // New method to refresh session
   refreshSession: async (): Promise<SessionRefreshResult> => {
     try {
-      console.log('🔄 Attempting to refresh session...');
+      if (__DEV__) {
+        console.log('🔄 Attempting to refresh session...');
+      }
       const {data, error} = await supabase.auth.refreshSession();
 
       if (error) {
@@ -596,13 +622,17 @@ export const authHelpers = {
       }
 
       if (data?.session) {
-        console.log('✅ Session refreshed successfully');
+        if (__DEV__) {
+          console.log('✅ Session refreshed successfully');
+        }
         return {
           success: true,
           session: data.session,
         };
       } else {
-        console.log('❌ No session returned from refresh');
+        if (__DEV__) {
+          console.log('❌ No session returned from refresh');
+        }
         return {
           success: false,
           error: 'No session returned from refresh',
@@ -619,7 +649,9 @@ export const authHelpers = {
 
   // Enhanced method to check auth state with recovery options
   checkAuthWithRecovery: async (): Promise<AuthenticationResult> => {
-    console.log('🔍 Starting enhanced authentication check...');
+    if (__DEV__) {
+      console.log('🔍 Starting enhanced authentication check...');
+    }
     try {
       // First, try to get the current user
       const result = await authHelpers.getCurrentUser();
@@ -632,20 +664,26 @@ export const authHelpers = {
           errorMessage.includes('session_not_found') ||
           errorMessage.includes('JWT expired')
         ) {
-          console.log('⚠️ Session issue detected, attempting recovery...');
+          if (__DEV__) {
+            console.log('⚠️ Session issue detected, attempting recovery...');
+          }
 
           // Try to refresh the session
           const refreshResult = await authHelpers.refreshSession();
 
           if (refreshResult.success) {
-            console.log('✅ Session recovered successfully');
+            if (__DEV__) {
+              console.log('✅ Session recovered successfully');
+            }
             return {
               authenticated: true,
               recovered: true,
               user: refreshResult.session?.user,
             };
           } else {
-            console.log('❌ Session recovery failed');
+            if (__DEV__) {
+              console.log('❌ Session recovery failed');
+            }
             return {
               authenticated: false,
               needsReauth: true,
@@ -683,9 +721,13 @@ export const authHelpers = {
   // Method to clear invalid session and prepare for re-auth
   clearInvalidSession: async (): Promise<SessionClearResult> => {
     try {
-      console.log('🧹 Clearing invalid session...');
+      if (__DEV__) {
+        console.log('🧹 Clearing invalid session...');
+      }
       await supabase.auth.signOut();
-      console.log('✅ Invalid session cleared');
+      if (__DEV__) {
+        console.log('✅ Invalid session cleared');
+      }
       return {success: true};
     } catch (error) {
       console.error('❌ Error clearing invalid session:', error);
@@ -763,7 +805,9 @@ export const handleAuthenticationWithRecovery = async (options?: {
 > => {
   const {clearInvalidSession = true} = options || {};
 
-  console.log('🔐 Starting comprehensive authentication check...');
+  if (__DEV__) {
+    console.log('🔐 Starting comprehensive authentication check...');
+  }
 
   try {
     // Use the enhanced auth check method
@@ -779,9 +823,11 @@ export const handleAuthenticationWithRecovery = async (options?: {
     // Handle different failure scenarios
     if (authResult.needsReauth) {
       if (clearInvalidSession) {
-        console.log(
-          '🧹 Clearing invalid session before recommending re-login...',
-        );
+        if (__DEV__) {
+          console.log(
+            '🧹 Clearing invalid session before recommending re-login...',
+          );
+        }
         await authHelpers.clearInvalidSession();
       }
 

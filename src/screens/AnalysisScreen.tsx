@@ -23,15 +23,13 @@ import {safeAwait} from '../utils/safeAwait';
 import {getUserName} from '../services/onboarding';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../navigation/AppNavigator';
-import { journalEntriesService } from '../services/journalEntries';
-import { Path } from 'react-native-svg';
+import {journalEntriesService} from '../services/journalEntries';
+import {Path} from 'react-native-svg';
 import Svg from 'react-native-svg';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Analysis'>;
 
-const JournalIcon: React.FC<{size?: number}> = ({
-  size = 24,
-}) => (
+const JournalIcon: React.FC<{size?: number}> = ({size = 24}) => (
   <Svg width={size} height={size} viewBox="0 0 16 16" fill="#FFFFFF">
     <Path d="M5 10.5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 0 1h-2a.5.5 0 0 1-.5-.5zm0-2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5zm0-2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5zm0-2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5z" />
     <Path d="M3 0h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-1h1v1a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v1H1V2a2 2 0 0 1 2-2z" />
@@ -130,7 +128,9 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
     if (skipAI && entryId) {
       // Load stored analysis data for existing entries
       const loadStoredData = async () => {
-        const [error, storedData] = await safeAwait(journalEntriesService.getEntry(entryId));
+        const [error, storedData] = await safeAwait(
+          journalEntriesService.getEntry(entryId),
+        );
 
         if (error || !storedData?.analysisData) {
           console.error(
@@ -138,9 +138,11 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
             error,
           );
           // If no stored data exists, generate fresh analysis even for existing entries
-          console.log(
-            'No stored analysis data found, generating fresh analysis...',
-          );
+          if (__DEV__) {
+            console.log(
+              'No stored analysis data found, generating fresh analysis...',
+            );
+          }
 
           const [analysisError, analysisData] = await safeAwait(
             analyzeJournalEntryData(entryText),
@@ -515,10 +517,14 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}>
             <Text style={styles.backButtonText}>←</Text>
           </TouchableOpacity>
           <View>
@@ -534,7 +540,9 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#000000" />
             <Text style={styles.loadingTitle}>Analyzing your entry</Text>
-            <Text style={styles.loadingSubtitle}>Finding themes and emotions...</Text>
+            <Text style={styles.loadingSubtitle}>
+              Finding themes and emotions...
+            </Text>
             <View style={styles.progressBarBackground}>
               <Animated.View
                 style={[
@@ -555,7 +563,9 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
             <View style={styles.dateSection}>
               <Text style={styles.currentDate}>{getCurrentDate()}</Text>
               <Text style={styles.summary}>
-                {analysisData?.themes?.length || 0} themes identified • {analysisData?.emotions?.length || 0} key emotions • Personal insights generated
+                {analysisData?.themes?.length || 0} themes identified •{' '}
+                {analysisData?.emotions?.length || 0} key emotions • Personal
+                insights generated
               </Text>
             </View>
 
@@ -564,23 +574,38 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>THEMES DISCOVERED</Text>
                 <View style={styles.categoryCount}>
-                  <Text style={styles.categoryCountText}>{analysisData?.themes?.length || 0}</Text>
+                  <Text style={styles.categoryCountText}>
+                    {analysisData?.themes?.length || 0}
+                  </Text>
                 </View>
               </View>
 
               <View style={styles.themesGrid}>
                 {(analysisData?.themes || []).map((theme, index) => (
-                  <TouchableOpacity key={index} style={styles.themeCard} onPress={() => handleThemePress(theme)}>
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.themeCard}
+                    onPress={() => handleThemePress(theme)}>
                     <View style={styles.themeHeader}>
-                      <View style={[styles.themeIcon, { backgroundColor: getThemeColor(theme.name) }]}>
+                      <View
+                        style={[
+                          styles.themeIcon,
+                          {backgroundColor: getThemeColor(theme.name)},
+                        ]}>
                         <Text style={styles.themeEmoji}>{theme.emoji}</Text>
                       </View>
                       <View style={styles.themeContent}>
                         <Text style={styles.themeName}>{theme.name}</Text>
-                        <Text style={styles.themeDescription}>{theme.count} mentions found</Text>
+                        <Text style={styles.themeDescription}>
+                          {theme.count} mentions found
+                        </Text>
                       </View>
                     </View>
-                    <View style={[styles.themeAmount, { backgroundColor: getThemeColor(theme.name) }]}>
+                    <View
+                      style={[
+                        styles.themeAmount,
+                        {backgroundColor: getThemeColor(theme.name)},
+                      ]}>
                       <Text style={styles.themeCount}>{theme.count}</Text>
                     </View>
                   </TouchableOpacity>
@@ -593,7 +618,9 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>EMOTIONAL BREAKDOWN</Text>
                 <View style={styles.categoryCount}>
-                  <Text style={styles.categoryCountText}>{analysisData?.emotions?.length || 0}</Text>
+                  <Text style={styles.categoryCountText}>
+                    {analysisData?.emotions?.length || 0}
+                  </Text>
                 </View>
               </View>
 
@@ -601,7 +628,12 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
                 {(analysisData?.emotions || []).map((emotion, index) => (
                   <View key={index} style={styles.emotionItem}>
                     <View style={styles.emotionHeader}>
-                      <View style={[styles.emotionDot, { backgroundColor: emotion.color }]} />
+                      <View
+                        style={[
+                          styles.emotionDot,
+                          {backgroundColor: emotion.color},
+                        ]}
+                      />
                       <Text style={styles.emotionName}>{emotion.name}</Text>
                     </View>
                     <View style={styles.emotionRight}>
@@ -618,7 +650,9 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
                           />
                         </View>
                       </View>
-                      <Text style={styles.emotionPercent}>{emotion.percentage}%</Text>
+                      <Text style={styles.emotionPercent}>
+                        {emotion.percentage}%
+                      </Text>
                     </View>
                   </View>
                 ))}
@@ -657,7 +691,9 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
               {loadingPerspective ? (
                 <View style={styles.loadingRow}>
                   <ActivityIndicator size="small" color="#000000" />
-                  <Text style={styles.loadingText}>Generating perspective...</Text>
+                  <Text style={styles.loadingText}>
+                    Generating perspective...
+                  </Text>
                 </View>
               ) : (
                 <View style={styles.perspectiveCard}>
@@ -679,11 +715,12 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
         visible={showThemeModal}
         animationType="slide"
         presentationStyle="pageSheet"
-        onRequestClose={closeThemeModal}
-      >
+        onRequestClose={closeThemeModal}>
         <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <TouchableOpacity style={styles.modalBackButton} onPress={closeThemeModal}>
+            <TouchableOpacity
+              style={styles.modalBackButton}
+              onPress={closeThemeModal}>
               <Text style={styles.modalBackText}>←</Text>
             </TouchableOpacity>
             <View>
@@ -697,12 +734,22 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
             {selectedTheme && (
               <>
                 <View style={styles.modalThemeHeader}>
-                  <View style={[styles.modalThemeIcon, { backgroundColor: selectedTheme.color }]}>
-                    <Text style={styles.modalThemeEmoji}>{selectedTheme.emoji}</Text>
+                  <View
+                    style={[
+                      styles.modalThemeIcon,
+                      {backgroundColor: selectedTheme.color},
+                    ]}>
+                    <Text style={styles.modalThemeEmoji}>
+                      {selectedTheme.emoji}
+                    </Text>
                   </View>
                   <View style={styles.modalThemeInfo}>
-                    <Text style={styles.modalThemeName}>{selectedTheme.name}</Text>
-                    <Text style={styles.modalThemeCount}>{selectedTheme.count} mentions in your entry</Text>
+                    <Text style={styles.modalThemeName}>
+                      {selectedTheme.name}
+                    </Text>
+                    <Text style={styles.modalThemeCount}>
+                      {selectedTheme.count} mentions in your entry
+                    </Text>
                   </View>
                 </View>
 
@@ -717,18 +764,22 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
 
                 <View style={styles.modalSection}>
                   <Text style={styles.modalSectionTitle}>Key Insights</Text>
-                  {selectedTheme.insights.map((insight: string, index: number) => (
-                    <View key={index} style={styles.modalInsightItem}>
-                      <View style={styles.modalInsightDot} />
-                      <Text style={styles.modalInsightText}>
-                        {personalizeInsight(insight, userName)}
-                      </Text>
-                    </View>
-                  ))}
+                  {selectedTheme.insights.map(
+                    (insight: string, index: number) => (
+                      <View key={index} style={styles.modalInsightItem}>
+                        <View style={styles.modalInsightDot} />
+                        <Text style={styles.modalInsightText}>
+                          {personalizeInsight(insight, userName)}
+                        </Text>
+                      </View>
+                    ),
+                  )}
                 </View>
 
                 <View style={styles.modalSection}>
-                  <Text style={styles.modalSectionTitle}>Reflection Questions</Text>
+                  <Text style={styles.modalSectionTitle}>
+                    Reflection Questions
+                  </Text>
                   <View style={styles.reflectionCard}>
                     <Text style={styles.reflectionText}>
                       {userName
@@ -738,13 +789,15 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
                   </View>
                   <View style={styles.reflectionCard}>
                     <Text style={styles.reflectionText}>
-                      What patterns do you notice around {selectedTheme.name.toLowerCase()}?
+                      What patterns do you notice around{' '}
+                      {selectedTheme.name.toLowerCase()}?
                     </Text>
                   </View>
                   {userName && (
                     <View style={styles.reflectionCard}>
                       <Text style={styles.reflectionText}>
-                        {userName}, what would you tell a friend who was experiencing similar thoughts about{' '}
+                        {userName}, what would you tell a friend who was
+                        experiencing similar thoughts about{' '}
                         {selectedTheme.name.toLowerCase()}?
                       </Text>
                     </View>
@@ -758,16 +811,20 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
 
       {/* Floating Action Buttons */}
       {entryId && (
-        <TouchableOpacity 
-          style={styles.viewEntryButton} 
-          onPress={() => navigation.navigate('EntryDetail', { 
-            entryId: entryId
-          })}>
+        <TouchableOpacity
+          style={styles.viewEntryButton}
+          onPress={() =>
+            navigation.navigate('EntryDetail', {
+              entryId: entryId,
+            })
+          }>
           <JournalIcon size={20} />
         </TouchableOpacity>
       )}
 
-      <TouchableOpacity style={styles.newEntryButton} onPress={() => navigation.navigate('Home')}>
+      <TouchableOpacity
+        style={styles.newEntryButton}
+        onPress={() => navigation.navigate('Home')}>
         <HomeIcon size={24} />
       </TouchableOpacity>
     </SafeAreaView>

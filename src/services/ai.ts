@@ -225,7 +225,7 @@ const extractContentFromResponse = (response: any): string | null => {
         } else if (currentProvider === 'deepseek') {
           // DeepSeek reasoner: content is the final answer, reasoning_content is the thinking process
           // Priority: content (final answer) > reasoning_content (if content is empty)
-          
+
           if (
             choice.message.content &&
             typeof choice.message.content === 'string' &&
@@ -806,11 +806,13 @@ Journal entry: "${entry.replace(/"/g, '\\"').replace(/\n/g, '\\n')}"
 Return only the JSON object:`;
 
   const config = getAIConfig();
-  console.log('🔍 Analyzing journal entry with config:', {
-    provider: AI_CONFIG.provider,
-    model: config.model,
-    entryLength: entry.length,
-  });
+  if (__DEV__) {
+    console.log('🔍 Analyzing journal entry with config:', {
+      provider: AI_CONFIG.provider,
+      model: config.model,
+      entryLength: entry.length,
+    });
+  }
 
   const [error, res] = await safeAwait(
     axios.post(
@@ -842,12 +844,12 @@ Return only the JSON object:`;
   if (res.data?.choices?.[0]?.message) {
     const message = res.data.choices[0].message;
     const choice = res.data.choices[0];
-    
+
     if (currentProvider === 'deepseek') {
       // Check if DeepSeek response was truncated
       if (choice.finish_reason === 'length') {
         console.warn('⚠️ DeepSeek response was truncated due to token limit');
-        
+
         // If content is empty but reasoning_content exists, the JSON might be in reasoning_content
         if (
           (!message.content || message.content.trim() === '') &&
@@ -856,7 +858,7 @@ Return only the JSON object:`;
           // Try to find a complete JSON object in reasoning_content
           const reasoningContent = message.reasoning_content;
           const jsonMatch = reasoningContent.match(/\{[\s\S]*\}/);
-          
+
           if (jsonMatch) {
             try {
               // Try to parse it to see if it's valid
@@ -881,7 +883,7 @@ Return only the JSON object:`;
       if (choice.finish_reason === 'length') {
         console.warn('⚠️ OpenAI response was truncated due to token limit');
       }
-      
+
       // OpenAI doesn't have reasoning_content, so if content is empty, it's an error
       if (!message.content || message.content.trim() === '') {
         console.error('❌ OpenAI response has empty content field');
@@ -919,14 +921,14 @@ Return only the JSON object:`;
       `❌ Error parsing ${currentProvider} analysis response:`,
       parseError,
     );
-    
+
     // Check if this was a truncation issue
     if (res.data?.choices?.[0]?.finish_reason === 'length') {
       console.error(
         `💔 ${currentProvider} response was truncated, this likely caused the JSON parsing error`,
       );
     }
-    
+
     return getFallbackAnalysisData();
   }
 }

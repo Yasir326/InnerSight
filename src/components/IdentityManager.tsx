@@ -108,7 +108,9 @@ export const IdentityManager: React.FC<IdentityManagerProps> = ({
         } = await supabase.auth.getSession();
 
         if (!session) {
-          console.log('⚠️ No session found, retrying...', retryCount + 1);
+          if (__DEV__) {
+            console.log('⚠️ No session found, retrying...', retryCount + 1);
+          }
           retryCount++;
           if (retryCount < maxRetries) {
             await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
@@ -135,10 +137,12 @@ export const IdentityManager: React.FC<IdentityManagerProps> = ({
             error.message?.includes('Auth session missing') &&
             retryCount < maxRetries - 1
           ) {
-            console.log(
-              '⚠️ Session missing error, retrying...',
-              retryCount + 1,
-            );
+            if (__DEV__) {
+              console.log(
+                '⚠️ Session missing error, retrying...',
+                retryCount + 1,
+              );
+            }
             retryCount++;
             await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
             continue;

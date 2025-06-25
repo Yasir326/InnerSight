@@ -48,21 +48,23 @@ const OnboardingCompleteScreen: React.FC<Props> = ({navigation}) => {
         useNativeDriver: true,
       }),
     ]).start();
-  }, [fadeAnim, scaleAnim, slideAnim ]);
+  }, [fadeAnim, scaleAnim, slideAnim]);
 
   const handleStartJourney = async () => {
     try {
-      console.log('🚀 Starting onboarding completion process...');
+      if (__DEV__) {
+        console.log('🚀 Starting onboarding completion process...');
+      }
 
       // Collect all onboarding data from AsyncStorage
       const [goalsError, goalsData] = await safeAwait(
-        AsyncStorage.getItem('@journal_onboarding_goals')
+        AsyncStorage.getItem('@journal_onboarding_goals'),
       );
       const [challengesError, challengesData] = await safeAwait(
-        AsyncStorage.getItem('@journal_onboarding_challenges')
+        AsyncStorage.getItem('@journal_onboarding_challenges'),
       );
       const [reflectionsError, reflectionsData] = await safeAwait(
-        AsyncStorage.getItem('@journal_onboarding_reflections')
+        AsyncStorage.getItem('@journal_onboarding_reflections'),
       );
 
       if (goalsError || challengesError || reflectionsError) {
@@ -76,19 +78,21 @@ const OnboardingCompleteScreen: React.FC<Props> = ({navigation}) => {
       // Parse the data with fallbacks
       const goals = goalsData ? JSON.parse(goalsData) : [];
       const challenges = challengesData ? JSON.parse(challengesData) : [];
-      const reflections = reflectionsData 
-        ? JSON.parse(reflectionsData) 
+      const reflections = reflectionsData
+        ? JSON.parse(reflectionsData)
         : {
             current_state: '',
             ideal_self: '',
             biggest_obstacle: '',
           };
 
-      console.log('📊 Collected onboarding data:', {
-        goals,
-        challenges,
-        reflections,
-      });
+      if (__DEV__) {
+        console.log('📊 Collected onboarding data:', {
+          goals,
+          challenges,
+          reflections,
+        });
+      }
 
       // Save consolidated data to Supabase
       const saveSuccess = await storageService.saveOnboardingData({
@@ -101,7 +105,9 @@ const OnboardingCompleteScreen: React.FC<Props> = ({navigation}) => {
         console.error('Failed to save onboarding data to Supabase');
         // Continue anyway - we don't want to block the user
       } else {
-        console.log('✅ Onboarding data saved to Supabase successfully');
+        if (__DEV__) {
+          console.log('✅ Onboarding data saved to Supabase successfully');
+        }
       }
 
       // Clean up AsyncStorage keys
@@ -111,7 +117,9 @@ const OnboardingCompleteScreen: React.FC<Props> = ({navigation}) => {
         AsyncStorage.removeItem('@journal_onboarding_reflections'),
       ]);
 
-      console.log('🧹 Cleaned up temporary AsyncStorage data');
+      if (__DEV__) {
+        console.log('🧹 Cleaned up temporary AsyncStorage data');
+      }
 
       // Navigate to home and reset navigation stack
       navigation.reset({
