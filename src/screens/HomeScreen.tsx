@@ -44,6 +44,87 @@ const JournalIcon: React.FC<{size?: number; color?: string}> = ({
   </Svg>
 );
 
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+};
+
+interface CategoryItemProps {
+  item: {
+    name: string;
+    icon: string;
+    color: string;
+    value: string;
+  };
+}
+
+const CategoryItem: React.FC<CategoryItemProps> = React.memo(({item}) => (
+  <TouchableOpacity style={styles.categoryItem}>
+    <View style={[styles.categoryIcon, {backgroundColor: item.color}]}>
+      <Text style={styles.categoryEmoji}>{item.icon}</Text>
+    </View>
+    <View style={styles.categoryContent}>
+      <Text style={styles.categoryName}>{item.name}</Text>
+      <Text style={styles.categoryValue}>{item.value}</Text>
+    </View>
+  </TouchableOpacity>
+));
+
+interface EntryItemProps {
+  item: JournalEntry;
+  navigation: NativeStackNavigationProp<RootStackParamList, 'Home'>;
+  onDelete: (entryId: string, entryTitle: string) => void;
+}
+
+const EntryItem: React.FC<EntryItemProps> = React.memo(
+  ({item, navigation, onDelete}) => (
+    <TouchableOpacity
+      style={styles.entryItem}
+      onPress={() =>
+        navigation.navigate('Analysis', {
+          entryText: item.content,
+          entryId: item.id,
+          skipAI: true,
+          entryTitle: item.title,
+        })
+      }>
+      <View style={styles.entryHeader}>
+        <View style={styles.entryIconContainer}>
+          <Text style={styles.entryIcon}>📝</Text>
+        </View>
+        <View style={styles.entryContent}>
+          <Text style={styles.entryTitle}>{item.title}</Text>
+          <Text style={styles.entryDescription} numberOfLines={2}>
+            {item.content}
+          </Text>
+          <View style={styles.entryMeta}>
+            <Text style={styles.entryLocation}>📍 Personal Journal</Text>
+            <Text style={styles.entryDate}>{formatDate(item.createdAt)}</Text>
+          </View>
+        </View>
+        <View style={styles.entryActions}>
+          <TouchableOpacity
+            style={styles.viewButton}
+            onPress={() => navigation.navigate('EntryDetail', {entryId: item.id})}
+            hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
+            <JournalIcon size={18} color="#666666" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={() => onDelete(item.id, item.title)}
+            hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
+            <TrashIcon size={18} color="#666666" />
+          </TouchableOpacity>
+        </View>
+      </View>
+    </TouchableOpacity>
+  ),
+);
+
 const HomeScreen: React.FC = () => {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,14 +186,6 @@ const HomeScreen: React.FC = () => {
     }, []),
   );
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    });
-  };
 
   const getWelcomeMessage = () => {
     if (userName && userName.trim()) {
@@ -175,7 +248,7 @@ const HomeScreen: React.FC = () => {
     ]);
   };
 
-  const categories = [
+  const categories: CategoryItemProps['item'][] = [
     {
       name: 'Emotion',
       icon: mostCommonEmotion ? getEmotionEmoji(mostCommonEmotion.name) : '��',
@@ -202,59 +275,18 @@ const HomeScreen: React.FC = () => {
     },
   ];
 
-  const renderCategoryItem = ({item}: {item: (typeof categories)[0]}) => (
-    <TouchableOpacity style={styles.categoryItem}>
-      <View style={[styles.categoryIcon, {backgroundColor: item.color}]}>
-        <Text style={styles.categoryEmoji}>{item.icon}</Text>
-      </View>
-      <View style={styles.categoryContent}>
-        <Text style={styles.categoryName}>{item.name}</Text>
-        <Text style={styles.categoryValue}>{item.value}</Text>
-      </View>
-    </TouchableOpacity>
+  const renderCategoryItem = useCallback(
+    ({item}: {item: CategoryItemProps['item']}) => (
+      <CategoryItem item={item} />
+    ),
+    [],
   );
 
-  const renderEntryItem = ({item}: {item: JournalEntry}) => (
-    <TouchableOpacity
-      style={styles.entryItem}
-      onPress={() =>
-        navigation.navigate('Analysis', {
-          entryText: item.content,
-          entryId: item.id,
-          skipAI: true,
-          entryTitle: item.title,
-        })
-      }>
-      <View style={styles.entryHeader}>
-        <View style={styles.entryIconContainer}>
-          <Text style={styles.entryIcon}>📝</Text>
-        </View>
-        <View style={styles.entryContent}>
-          <Text style={styles.entryTitle}>{item.title}</Text>
-          <Text style={styles.entryDescription} numberOfLines={2}>
-            {item.content}
-          </Text>
-          <View style={styles.entryMeta}>
-            <Text style={styles.entryLocation}>📍 Personal Journal</Text>
-            <Text style={styles.entryDate}>{formatDate(item.createdAt)}</Text>
-          </View>
-        </View>
-        <View style={styles.entryActions}>
-          <TouchableOpacity
-            style={styles.viewButton}
-            onPress={() => navigation.navigate('EntryDetail', { entryId: item.id })}
-            hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
-            <JournalIcon size={18} color="#666666" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.deleteButton}
-            onPress={() => handleDeleteEntry(item.id, item.title)}
-            hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
-            <TrashIcon size={18} color="#666666" />
-          </TouchableOpacity>
-        </View>
-      </View>
-    </TouchableOpacity>
+  const renderEntryItem = useCallback(
+    ({item}: {item: JournalEntry}) => (
+      <EntryItem item={item} navigation={navigation} onDelete={handleDeleteEntry} />
+    ),
+    [navigation, handleDeleteEntry],
   );
 
   const renderEmptyState = () => (
