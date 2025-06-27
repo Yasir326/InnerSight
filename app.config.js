@@ -1,4 +1,4 @@
-export default {
+module.exports = {
   expo: {
     name: "InnerSight",
     slug: "innersight",
@@ -31,14 +31,6 @@ export default {
     web: {
       favicon: "./src/assets/favicon.png"
     },
-    scheme: "innersight",
-    plugins: [
-      [
-        "expo-auth-session",
-        {
-          schemes: ["innersight"]
-        }
-      ]
-    ]
+    scheme: "innersight"
   }
 }; 

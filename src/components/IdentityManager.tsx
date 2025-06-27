@@ -363,7 +363,8 @@ export const IdentityManager: React.FC<IdentityManagerProps> = ({
           </TouchableOpacity>
         )}
 
-        {Platform.OS === 'ios' && !hasProvider('apple') && (
+        {/* Temporarily disabled Apple Sign In */}
+        {/* {Platform.OS === 'ios' && !hasProvider('apple') && (
           <TouchableOpacity
             style={styles.linkButton}
             onPress={() => handleLinkIdentity('apple')}
@@ -380,7 +381,7 @@ export const IdentityManager: React.FC<IdentityManagerProps> = ({
               )}
             </View>
           </TouchableOpacity>
-        )}
+        )} */}
       </View>
 
       {identities.length > 0 && (

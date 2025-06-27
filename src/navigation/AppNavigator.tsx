@@ -77,6 +77,36 @@ const AppNavigator: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [loadingMessage, setLoadingMessage] = useState('Initializing...');
 
+  // Authentication state listener
+  useEffect(() => {
+    console.log('🔗 Setting up auth state listener...');
+
+    const {
+      data: {subscription},
+    } = authHelpers.onAuthStateChange((event, session) => {
+      console.log(
+        '🔄 Auth state changed:',
+        event,
+        session ? 'Session exists' : 'No session',
+      );
+
+      if (event === 'SIGNED_OUT' || !session) {
+        console.log('👋 User signed out, updating state...');
+        setIsAuthenticated(false);
+        setOnboardingComplete(null);
+      } else if (event === 'SIGNED_IN' && session) {
+        console.log('👋 User signed in, updating state...');
+        setIsAuthenticated(true);
+        // Don't reset onboarding status here, let handleAuthSuccess handle it
+      }
+    });
+
+    return () => {
+      console.log('🔗 Cleaning up auth state listener...');
+      subscription.unsubscribe();
+    };
+  }, []);
+
   // Initial authentication and onboarding check
   useEffect(() => {
     const initializeApp = async () => {

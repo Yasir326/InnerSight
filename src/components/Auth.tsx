@@ -40,6 +40,7 @@ const GoogleIcon: React.FC<{size?: number}> = ({size = 20}) => (
 );
 
 // Apple Logo Icon
+/* Temporarily disabled Apple Sign In
 const AppleIcon: React.FC<{size?: number; color?: string}> = ({
   size = 20,
   color = '#FFFFFF',
@@ -48,6 +49,7 @@ const AppleIcon: React.FC<{size?: number; color?: string}> = ({
     <Path d="M17.05 20.28c-.98.95-2.05.86-3.08.38-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.38C2.79 15.15 3.51 7.2 9.05 6.89c1.65.08 2.78 1.12 3.75 1.14 1.2-.09 2.4-1.16 3.89-1.14 1.38.08 2.41.43 3.09 1.12-2.73 1.83-2.28 5.18.26 6.75-.67 1.93-1.5 3.8-2.99 5.52zM12.03 6.77c-.14-2.76 2.11-5.1 4.8-5.27.27 2.8-2.48 5.4-4.8 5.27z" />
   </Svg>
 );
+*/
 
 const SocialButton = ({
   provider,
@@ -109,13 +111,8 @@ export const Auth: React.FC<AuthProps> = ({onAuthSuccess}) => {
   };
 
   const handleAccountLinking = async (email: string) => {
-    const isIOS = Platform.OS === 'ios';
-    const providers = isIOS
-      ? [
-          {name: 'Google', provider: 'google' as const},
-          {name: 'Apple', provider: 'apple' as const},
-        ]
-      : [{name: 'Google', provider: 'google' as const}];
+    // Temporarily disabled Apple Sign In - only show Google option
+    const providers = [{name: 'Google', provider: 'google' as const}];
 
     const providerOptions = providers
       .map(p => `• Sign in with ${p.name} and add a password`)
@@ -246,13 +243,8 @@ export const Auth: React.FC<AuthProps> = ({onAuthSuccess}) => {
 
           // Check if this might be an OAuth account trying to sign in with email/password
           if (getErrorMessage(error).includes('Invalid login credentials')) {
-            const isIOS = Platform.OS === 'ios';
-            const providers = isIOS
-              ? [
-                  {name: 'Google', provider: 'google' as const},
-                  {name: 'Apple', provider: 'apple' as const},
-                ]
-              : [{name: 'Google', provider: 'google' as const}];
+            // Temporarily disabled Apple Sign In - only show Google option
+            const providers = [{name: 'Google', provider: 'google' as const}];
 
             const providerSuggestions = providers.map(p => p.name).join(' or ');
             const suggestionText =
@@ -397,7 +389,8 @@ export const Auth: React.FC<AuthProps> = ({onAuthSuccess}) => {
               socialLoading={socialLoading}
               handleSocialAuth={handleSocialAuth}
             />
-            {Platform.OS === 'ios' && (
+            {/* Temporarily disabled Apple Sign In */}
+            {/* {Platform.OS === 'ios' && (
               <SocialButton
                 provider="apple"
                 title="Continue with Apple"
@@ -408,7 +401,7 @@ export const Auth: React.FC<AuthProps> = ({onAuthSuccess}) => {
                 socialLoading={socialLoading}
                 handleSocialAuth={handleSocialAuth}
               />
-            )}
+            )} */}
           </View>
 
           {/* Divider */}
