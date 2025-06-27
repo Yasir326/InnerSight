@@ -20,6 +20,7 @@ import {safeAwait} from '../utils/safeAwait';
 import {journalEntriesService} from '../services/journalEntries';
 import {analyzeUserStreaks} from '../services/streakAnalytics';
 import IdentityManager from '../components/IdentityManager';
+import {baseFontFamily} from '../utils/platform';
 
 // Custom Icons
 const BackIcon: React.FC<{size?: number; color?: string}> = ({
@@ -579,7 +580,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: '#666666',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   header: {
     flexDirection: 'row',
@@ -597,13 +598,13 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '600',
     color: '#000000',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   headerSubtitle: {
     fontSize: 14,
     color: '#666666',
     marginTop: 2,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   menuButton: {
     padding: 8,
@@ -635,7 +636,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '600',
     color: '#FFFFFF',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   profileInfo: {
     flex: 1,
@@ -645,12 +646,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#000000',
     marginBottom: 4,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   profileEmail: {
     fontSize: 14,
     color: '#666666',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   statsSection: {
     flexDirection: 'row',
@@ -676,12 +677,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#000000',
     marginBottom: 4,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   statLabel: {
     fontSize: 12,
     color: '#666666',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   section: {
     backgroundColor: '#FFFFFF',
@@ -699,7 +700,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#666666',
     letterSpacing: 0.5,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   settingItem: {
     flexDirection: 'row',
@@ -728,12 +729,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#000000',
     marginBottom: 2,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   settingValue: {
     fontSize: 14,
     color: '#666666',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   editButton: {
     paddingHorizontal: 12,
@@ -747,7 +748,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#000000',
     fontWeight: '500',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   editContainer: {
     flexDirection: 'row',
@@ -765,7 +766,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#000000',
     backgroundColor: '#FFFFFF',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   saveButton: {
     backgroundColor: '#000000',
@@ -782,7 +783,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '500',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   chevron: {
     fontSize: 18,
@@ -812,7 +813,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     color: '#666666',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   dangerSectionTitle: {
     fontSize: 12,
@@ -820,12 +821,12 @@ const styles = StyleSheet.create({
     color: '#000000',
     letterSpacing: 0.5,
     marginBottom: 4,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   dangerSectionSubtitle: {
     fontSize: 12,
     color: '#666666',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   dangerActionButton: {
     flexDirection: 'row',
@@ -853,7 +854,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     color: '#666666',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   deleteSpinner: {
     marginLeft: 12,
@@ -867,12 +868,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666666',
     marginBottom: 4,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   footerSubtext: {
     fontSize: 12,
     color: '#999999',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
 });
 

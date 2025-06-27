@@ -20,6 +20,7 @@ import {
   type AnalysisData,
 } from '../services/ai';
 import {safeAwait} from '../utils/safeAwait';
+import {baseFontFamily} from '../utils/platform';
 import {getUserName} from '../services/onboarding';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../navigation/AppNavigator';
@@ -802,13 +803,13 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '600',
     color: '#000000',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   headerSubtitle: {
     fontSize: 14,
     color: '#666666',
     marginTop: 2,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   menuButton: {
     padding: 8,
@@ -835,13 +836,13 @@ const styles = StyleSheet.create({
     color: '#000000',
     marginTop: 16,
     marginBottom: 8,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   loadingSubtitle: {
     fontSize: 16,
     color: '#666666',
     marginBottom: 24,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   progressBarBackground: {
     width: 200,
@@ -871,12 +872,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#000000',
     marginBottom: 4,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   summary: {
     fontSize: 14,
     color: '#666666',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   section: {
     backgroundColor: '#FFFFFF',
@@ -897,7 +898,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#666666',
     letterSpacing: 0.5,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   categoryCount: {
     backgroundColor: '#E0E0E0',
@@ -909,7 +910,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#666666',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   themesGrid: {
     gap: 12,
@@ -956,12 +957,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#000000',
     marginBottom: 2,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   themeDescription: {
     fontSize: 14,
     color: '#666666',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   themeAmount: {
     borderRadius: 8,
@@ -974,7 +975,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#FFFFFF',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   emotionsContainer: {
     gap: 16,
@@ -999,7 +1000,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     color: '#000000',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   emotionRight: {
     flexDirection: 'row',
@@ -1027,7 +1028,7 @@ const styles = StyleSheet.create({
     color: '#666666',
     minWidth: 40,
     textAlign: 'right',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   insightCard: {
     flexDirection: 'row',
@@ -1055,7 +1056,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: '#000000',
     flex: 1,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   perspectiveCard: {
     flexDirection: 'row',
@@ -1083,7 +1084,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: '#000000',
     flex: 1,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   loadingRow: {
     flexDirection: 'row',
@@ -1094,7 +1095,7 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     fontSize: 15,
     color: '#666666',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   newEntryButton: {
     position: 'absolute',
@@ -1119,7 +1120,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 24,
     fontWeight: '300',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   // Modal Styles
   modalContainer: {
@@ -1146,13 +1147,13 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '600',
     color: '#000000',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   modalSubtitle: {
     fontSize: 14,
     color: '#666666',
     marginTop: 2,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   modalSpacer: {
     width: 40,
@@ -1188,12 +1189,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#000000',
     marginBottom: 4,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   modalThemeCount: {
     fontSize: 14,
     color: '#666666',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   modalSection: {
     backgroundColor: '#FFFFFF',
@@ -1206,13 +1207,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#000000',
     marginBottom: 12,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   modalBreakdown: {
     fontSize: 15,
     lineHeight: 22,
     color: '#666666',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   modalInsightItem: {
     flexDirection: 'row',
@@ -1232,7 +1233,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: '#000000',
     flex: 1,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   reflectionCard: {
     backgroundColor: '#F8F8F8',
@@ -1245,7 +1246,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: '#000000',
     fontStyle: 'italic',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   viewEntryButton: {
     position: 'absolute',
@@ -1270,7 +1271,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 24,
     fontWeight: '300',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
 });
 

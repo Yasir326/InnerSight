@@ -15,8 +15,7 @@ import {
 import Svg, {Path} from 'react-native-svg';
 import {authHelpers} from '../lib/supabase';
 import {getErrorMessage} from '../utils/error';
-
-const baseFontFamily = Platform.OS === 'ios' ? 'System' : 'normal';
+import {baseFontFamily} from '../utils/platform';
 
 // Google Logo Icon
 const GoogleIcon: React.FC<{size?: number}> = ({size = 20}) => (
