@@ -526,143 +526,68 @@ const extractJsonFromResponse = (content: string): string => {
   return cleanedContent.trim();
 };
 
-const getEmotionColor = (emotionName: string): string => {
-  const emotion = emotionName.toLowerCase();
+const emotionColorMap: Record<string, string> = {
+  happy: '#F59E0B',
+  joy: '#F59E0B',
+  elated: '#F59E0B',
+  grateful: '#10B981',
+  thankful: '#10B981',
+  appreciative: '#10B981',
+  hopeful: '#3B82F6',
+  optimistic: '#3B82F6',
+  confident: '#3B82F6',
+  excited: '#F97316',
+  enthusiastic: '#F97316',
+  energetic: '#F97316',
+  peaceful: '#06B6D4',
+  calm: '#06B6D4',
+  serene: '#06B6D4',
+  content: '#8B5CF6',
+  satisfied: '#8B5CF6',
+  fulfilled: '#8B5CF6',
+  love: '#EC4899',
+  affection: '#EC4899',
+  caring: '#EC4899',
+  contemplative: '#64748B',
+  reflective: '#64748B',
+  thoughtful: '#64748B',
+  curious: '#7C3AED',
+  wondering: '#7C3AED',
+  questioning: '#7C3AED',
+  determined: '#059669',
+  focused: '#059669',
+  motivated: '#059669',
+  nostalgic: '#D97706',
+  reminiscent: '#D97706',
+  wistful: '#D97706',
+  sad: '#6366F1',
+  melancholy: '#6366F1',
+  down: '#6366F1',
+  anxious: '#EF4444',
+  worried: '#EF4444',
+  nervous: '#EF4444',
+  frustrated: '#DC2626',
+  annoyed: '#DC2626',
+  irritated: '#DC2626',
+  uncertain: '#F59E0B',
+  confused: '#F59E0B',
+  unsure: '#F59E0B',
+  overwhelmed: '#7C2D12',
+  stressed: '#7C2D12',
+  pressured: '#7C2D12',
+  lonely: '#475569',
+  isolated: '#475569',
+  disconnected: '#475569',
+  tired: '#6B7280',
+  exhausted: '#6B7280',
+  drained: '#6B7280',
+};
 
-  // Positive emotions - warm, bright colors
-  if (
-    emotion.includes('happy') ||
-    emotion.includes('joy') ||
-    emotion.includes('elated')
-  ) {
-    return '#F59E0B'; // Bright amber
-  }
-  if (
-    emotion.includes('grateful') ||
-    emotion.includes('thankful') ||
-    emotion.includes('appreciative')
-  ) {
-    return '#10B981'; // Emerald green
-  }
-  if (
-    emotion.includes('hopeful') ||
-    emotion.includes('optimistic') ||
-    emotion.includes('confident')
-  ) {
-    return '#3B82F6'; // Blue
-  }
-  if (
-    emotion.includes('excited') ||
-    emotion.includes('enthusiastic') ||
-    emotion.includes('energetic')
-  ) {
-    return '#F97316'; // Orange
-  }
-  if (
-    emotion.includes('peaceful') ||
-    emotion.includes('calm') ||
-    emotion.includes('serene')
-  ) {
-    return '#06B6D4'; // Cyan
-  }
-  if (
-    emotion.includes('content') ||
-    emotion.includes('satisfied') ||
-    emotion.includes('fulfilled')
-  ) {
-    return '#8B5CF6'; // Purple
-  }
-  if (
-    emotion.includes('love') ||
-    emotion.includes('affection') ||
-    emotion.includes('caring')
-  ) {
-    return '#EC4899'; // Pink
-  }
-
-  // Neutral/contemplative emotions - muted colors
-  if (
-    emotion.includes('contemplative') ||
-    emotion.includes('reflective') ||
-    emotion.includes('thoughtful')
-  ) {
-    return '#64748B'; // Slate
-  }
-  if (
-    emotion.includes('curious') ||
-    emotion.includes('wondering') ||
-    emotion.includes('questioning')
-  ) {
-    return '#7C3AED'; // Violet
-  }
-  if (
-    emotion.includes('determined') ||
-    emotion.includes('focused') ||
-    emotion.includes('motivated')
-  ) {
-    return '#059669'; // Green
-  }
-  if (
-    emotion.includes('nostalgic') ||
-    emotion.includes('reminiscent') ||
-    emotion.includes('wistful')
-  ) {
-    return '#D97706'; // Amber
-  }
-
-  // Challenging emotions - cooler, more muted tones
-  if (
-    emotion.includes('sad') ||
-    emotion.includes('melancholy') ||
-    emotion.includes('down')
-  ) {
-    return '#6366F1'; // Indigo
-  }
-  if (
-    emotion.includes('anxious') ||
-    emotion.includes('worried') ||
-    emotion.includes('nervous')
-  ) {
-    return '#EF4444'; // Red
-  }
-  if (
-    emotion.includes('frustrated') ||
-    emotion.includes('annoyed') ||
-    emotion.includes('irritated')
-  ) {
-    return '#DC2626'; // Dark red
-  }
-  if (
-    emotion.includes('uncertain') ||
-    emotion.includes('confused') ||
-    emotion.includes('unsure')
-  ) {
-    return '#F59E0B'; // Amber
-  }
-  if (
-    emotion.includes('overwhelmed') ||
-    emotion.includes('stressed') ||
-    emotion.includes('pressured')
-  ) {
-    return '#7C2D12'; // Brown
-  }
-  if (
-    emotion.includes('lonely') ||
-    emotion.includes('isolated') ||
-    emotion.includes('disconnected')
-  ) {
-    return '#475569'; // Dark slate
-  }
-  if (
-    emotion.includes('tired') ||
-    emotion.includes('exhausted') ||
-    emotion.includes('drained')
-  ) {
-    return '#6B7280'; // Gray
-  }
-
-  // Default fallback color
-  return '#64748B'; // Slate
+const getEmotionColor = (name: string): string => {
+  const key = Object.keys(emotionColorMap).find(k =>
+    name.toLowerCase().includes(k),
+  );
+  return key ? emotionColorMap[key] : '#64748B';
 };
 
 const validateAndNormalizeAnalysisData = (data: any): AnalysisData => {
