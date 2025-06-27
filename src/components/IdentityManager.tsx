@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
-  Platform,
 } from 'react-native';
 import Svg, {Path} from 'react-native-svg';
 import {authHelpers} from '../lib/supabase';

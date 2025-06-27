@@ -13,7 +13,7 @@ interface AIProviderConfig {
 }
 
 const AI_CONFIG = {
-  provider: 'deepseek' as 'openai' | 'deepseek',
+  provider: 'openai' as 'openai' | 'deepseek',
   openai: {
     baseURL: 'https://api.openai.com/v1/chat/completions',
     model: 'gpt-4o',
