@@ -47,7 +47,9 @@ const OnboardingNameScreen: React.FC<Props> = ({navigation}) => {
 
   const handleContinue = async () => {
     if (canContinue) {
-      console.log('💾 Saving user name:', name.trim());
+      if (__DEV__) {
+        console.log('💾 Saving user name:', name.trim());
+      }
 
       // Save the name to AsyncStorage for temporary storage during onboarding
       const [asyncError] = await safeAwait(
@@ -65,7 +67,9 @@ const OnboardingNameScreen: React.FC<Props> = ({navigation}) => {
         });
 
         if (profileSuccess) {
-          console.log('✅ User name saved to profile successfully');
+          if (__DEV__) {
+            console.log('✅ User name saved to profile successfully');
+          }
         } else {
           console.warn(
             '⚠️ Failed to save user name to profile, but continuing...',
@@ -81,7 +85,9 @@ const OnboardingNameScreen: React.FC<Props> = ({navigation}) => {
   };
 
   const handleSkip = async () => {
-    console.log('⏭️ Skipping name entry');
+    if (__DEV__) {
+      console.log('⏭️ Skipping name entry');
+    }
 
     // Save empty name or default when skipping
     const [asyncError] = await safeAwait(

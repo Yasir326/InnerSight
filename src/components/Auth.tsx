@@ -273,9 +273,11 @@ export const Auth: React.FC<AuthProps> = ({onAuthSuccess}) => {
                     setSocialLoading(null);
 
                     if (result.success) {
-                      console.log(
-                        '✅ OAuth suggestion successful, waiting for session to stabilize...',
-                      );
+                      if (__DEV__) {
+                        console.log(
+                          '✅ OAuth suggestion successful, waiting for session to stabilize...',
+                        );
+                      }
 
                       // Add a small delay to ensure session is fully established
                       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -296,7 +298,9 @@ export const Auth: React.FC<AuthProps> = ({onAuthSuccess}) => {
             Alert.alert('Sign In Error', errorMessage);
           }
         } else if (data?.user) {
-          console.log('✅ Sign in successful');
+          if (__DEV__) {
+            console.log('✅ Sign in successful');
+          }
           onAuthSuccess();
         } else {
           Alert.alert('Error', 'Sign in failed - no user data returned');
@@ -318,9 +322,11 @@ export const Auth: React.FC<AuthProps> = ({onAuthSuccess}) => {
       console.error('❌ Social auth error:', result.error);
       Alert.alert('Social Sign In Error', result.error);
     } else if (result.success) {
-      console.log(
-        '✅ Social auth successful, waiting for session to stabilize...',
-      );
+      if (__DEV__) {
+        console.log(
+          '✅ Social auth successful, waiting for session to stabilize...',
+        );
+      }
 
       // Add a small delay to ensure session is fully established
       await new Promise(resolve => setTimeout(resolve, 1000));
