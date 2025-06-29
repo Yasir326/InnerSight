@@ -15,6 +15,7 @@ import type {RootStackParamList} from '../../navigation/AppNavigator';
 import {storageService} from '../../services/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {safeAwait} from '../../utils/safeAwait';
+import {debugLog} from '../../utils/logger';
 
 type Props = {
   navigation: NativeStackNavigationProp<
@@ -53,7 +54,7 @@ const OnboardingCompleteScreen: React.FC<Props> = ({navigation}) => {
   const handleStartJourney = async () => {
     try {
       if (__DEV__) {
-        console.log('🚀 Starting onboarding completion process...');
+        debugLog('🚀 Starting onboarding completion process...');
       }
 
       // Collect all onboarding data from AsyncStorage
@@ -87,7 +88,7 @@ const OnboardingCompleteScreen: React.FC<Props> = ({navigation}) => {
           };
 
       if (__DEV__) {
-        console.log('📊 Collected onboarding data:', {
+        debugLog('📊 Collected onboarding data:', {
           goals,
           challenges,
           reflections,
@@ -106,7 +107,7 @@ const OnboardingCompleteScreen: React.FC<Props> = ({navigation}) => {
         // Continue anyway - we don't want to block the user
       } else {
         if (__DEV__) {
-          console.log('✅ Onboarding data saved to Supabase successfully');
+          debugLog('✅ Onboarding data saved to Supabase successfully');
         }
       }
 
@@ -118,7 +119,7 @@ const OnboardingCompleteScreen: React.FC<Props> = ({navigation}) => {
       ]);
 
       if (__DEV__) {
-        console.log('🧹 Cleaned up temporary AsyncStorage data');
+        debugLog('🧹 Cleaned up temporary AsyncStorage data');
       }
 
       // Navigate to home and reset navigation stack

@@ -3,6 +3,7 @@ import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {View, Text, ActivityIndicator, StyleSheet} from 'react-native';
 import {safeAwait} from '../utils/safeAwait';
+import {debugLog} from '../utils/logger';
 
 // Auth Component
 import {Auth} from '../components/Auth';
@@ -135,7 +136,7 @@ const AppNavigator: React.FC = () => {
           // If authentication failed and user needs to re-authenticate
           if (!authenticated && authResult.needsReauth) {
             if (__DEV__) {
-              console.log('🔄 Session expired, user needs to re-authenticate');
+              debugLog('🔄 Session expired, user needs to re-authenticate');
             }
             // You could show a toast/alert here if desired
             // Alert.alert('Session Expired', authResult.error || 'Please log in again');
@@ -175,13 +176,13 @@ const AppNavigator: React.FC = () => {
 
   const handleAuthSuccess = async () => {
     if (__DEV__) {
-      console.log('🎉 Auth success callback triggered');
+      debugLog('🎉 Auth success callback triggered');
     }
     setIsAuthenticated(true);
     // Check onboarding status after successful auth
     try {
       if (__DEV__) {
-        console.log('📋 Checking onboarding status after auth success...');
+        debugLog('📋 Checking onboarding status after auth success...');
       }
       const complete = await Promise.race([
         storageService.isOnboardingComplete(),
@@ -193,7 +194,7 @@ const AppNavigator: React.FC = () => {
         ),
       ]);
       if (__DEV__) {
-        console.log('✅ Onboarding status retrieved:', complete);
+        debugLog('✅ Onboarding status retrieved:', complete);
       }
       setOnboardingComplete(complete);
     } catch (error) {
@@ -206,7 +207,7 @@ const AppNavigator: React.FC = () => {
   // Show loading screen during initial setup
   if (isLoading) {
     if (__DEV__) {
-      console.log('⏳ Showing loading screen:', loadingMessage);
+      debugLog('⏳ Showing loading screen:', loadingMessage);
     }
     return <LoadingScreen message={loadingMessage} />;
   }
@@ -214,7 +215,7 @@ const AppNavigator: React.FC = () => {
   // Show loading state while checking auth status
   if (isAuthenticated === null) {
     if (__DEV__) {
-      console.log('⏳ Auth status still null, showing loading...');
+      debugLog('⏳ Auth status still null, showing loading...');
     }
     return <LoadingScreen message="Checking authentication..." />;
   }
@@ -222,7 +223,7 @@ const AppNavigator: React.FC = () => {
   // If not authenticated, show auth screen
   if (!isAuthenticated) {
     if (__DEV__) {
-      console.log('🔐 Showing auth screen');
+      debugLog('🔐 Showing auth screen');
     }
     return (
       <NavigationContainer>
@@ -238,13 +239,13 @@ const AppNavigator: React.FC = () => {
   // If authenticated but onboarding status is still loading
   if (onboardingComplete === null) {
     if (__DEV__) {
-      console.log('⏳ Onboarding status still loading...');
+      debugLog('⏳ Onboarding status still loading...');
     }
     return <LoadingScreen message="Setting up your experience..." />;
   }
 
   if (__DEV__) {
-    console.log(
+    debugLog(
       '🚀 Showing main app, onboarding complete:',
       onboardingComplete,
     );

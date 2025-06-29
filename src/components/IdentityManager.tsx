@@ -12,6 +12,7 @@ import {authHelpers} from '../lib/supabase';
 import {safeAwait} from '../utils/safeAwait';
 import {supabase} from '../lib/supabase';
 import {baseFontFamily} from '../utils/platform';
+import {debugLog} from '../utils/logger';
 
 // Use Supabase's UserIdentity type directly
 type UserIdentity = {
@@ -109,7 +110,7 @@ export const IdentityManager: React.FC<IdentityManagerProps> = ({
 
         if (!session) {
           if (__DEV__) {
-            console.log('⚠️ No session found, retrying...', retryCount + 1);
+            debugLog('⚠️ No session found, retrying...', retryCount + 1);
           }
           retryCount++;
           if (retryCount < maxRetries) {
@@ -138,7 +139,7 @@ export const IdentityManager: React.FC<IdentityManagerProps> = ({
             retryCount < maxRetries - 1
           ) {
             if (__DEV__) {
-              console.log(
+              debugLog(
                 '⚠️ Session missing error, retrying...',
                 retryCount + 1,
               );
