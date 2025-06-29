@@ -16,6 +16,7 @@ import type {RootStackParamList} from '../../navigation/AppNavigator';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {safeAwait} from '../../utils/safeAwait';
 import {storageService} from '../../services/storage';
+import {debugLog} from '../../utils/logger';
 
 const USER_NAME_KEY = '@journal_user_name';
 
@@ -48,7 +49,7 @@ const OnboardingNameScreen: React.FC<Props> = ({navigation}) => {
   const handleContinue = async () => {
     if (canContinue) {
       if (__DEV__) {
-        console.log('💾 Saving user name:', name.trim());
+        debugLog('💾 Saving user name:', name.trim());
       }
 
       // Save the name to AsyncStorage for temporary storage during onboarding
@@ -68,7 +69,7 @@ const OnboardingNameScreen: React.FC<Props> = ({navigation}) => {
 
         if (profileSuccess) {
           if (__DEV__) {
-            console.log('✅ User name saved to profile successfully');
+            debugLog('✅ User name saved to profile successfully');
           }
         } else {
           console.warn(
@@ -86,7 +87,7 @@ const OnboardingNameScreen: React.FC<Props> = ({navigation}) => {
 
   const handleSkip = async () => {
     if (__DEV__) {
-      console.log('⏭️ Skipping name entry');
+      debugLog('⏭️ Skipping name entry');
     }
 
     // Save empty name or default when skipping

@@ -16,6 +16,7 @@ import Svg, {Path} from 'react-native-svg';
 import {authHelpers} from '../lib/supabase';
 import {getErrorMessage} from '../utils/error';
 import {baseFontFamily} from '../utils/platform';
+import {debugLog} from '../utils/logger';
 
 // Google Logo Icon
 const GoogleIcon: React.FC<{size?: number}> = ({size = 20}) => (
@@ -274,7 +275,7 @@ export const Auth: React.FC<AuthProps> = ({onAuthSuccess}) => {
 
                     if (result.success) {
                       if (__DEV__) {
-                        console.log(
+                        debugLog(
                           '✅ OAuth suggestion successful, waiting for session to stabilize...',
                         );
                       }
@@ -299,7 +300,7 @@ export const Auth: React.FC<AuthProps> = ({onAuthSuccess}) => {
           }
         } else if (data?.user) {
           if (__DEV__) {
-            console.log('✅ Sign in successful');
+            debugLog('✅ Sign in successful');
           }
           onAuthSuccess();
         } else {
@@ -323,7 +324,7 @@ export const Auth: React.FC<AuthProps> = ({onAuthSuccess}) => {
       Alert.alert('Social Sign In Error', result.error);
     } else if (result.success) {
       if (__DEV__) {
-        console.log(
+        debugLog(
           '✅ Social auth successful, waiting for session to stabilize...',
         );
       }

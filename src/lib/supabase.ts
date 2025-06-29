@@ -8,6 +8,7 @@ import * as Linking from 'expo-linking';
 
 import {EXPO_PUBLIC_SUPABASE_URL, EXPO_PUBLIC_SUPABASE_ANON_KEY} from '@env';
 import {getErrorMessage} from '../utils/error';
+import {debugLog} from '../utils/logger';
 
 // Supabase client initialization
 const supabaseUrl = EXPO_PUBLIC_SUPABASE_URL;
@@ -278,7 +279,7 @@ export const authHelpers = {
       if (res.type === 'success') {
         const {url} = res;
         if (__DEV__) {
-          console.log('🔗 Processing OAuth callback...');
+          debugLog('🔗 Processing OAuth callback...');
         }
 
         // Process the callback and wait for session to be established
@@ -286,7 +287,7 @@ export const authHelpers = {
 
         if (session) {
           if (__DEV__) {
-            console.log('✅ OAuth session established successfully');
+            debugLog('✅ OAuth session established successfully');
           }
 
           // Wait a bit more to ensure session is fully propagated
@@ -351,7 +352,7 @@ export const authHelpers = {
   getUserIdentities: async () => {
     try {
       if (__DEV__) {
-        console.log('🔍 Fetching user identities...');
+        debugLog('🔍 Fetching user identities...');
       }
 
       // First check if we have a valid session
@@ -428,7 +429,7 @@ export const authHelpers = {
   ): Promise<{exists: boolean; error?: string}> => {
     try {
       if (__DEV__) {
-        console.log('🔍 Checking if account exists for email:', email);
+        debugLog('🔍 Checking if account exists for email:', email);
       }
 
       // Try to sign in with a dummy password to check if account exists
@@ -448,7 +449,7 @@ export const authHelpers = {
           errorMessage.includes('invalid password')
         ) {
           if (__DEV__) {
-            console.log('✅ Account exists for email:', email);
+            debugLog('✅ Account exists for email:', email);
           }
           return {exists: true};
         }
@@ -460,14 +461,14 @@ export const authHelpers = {
           errorMessage.includes('no user found')
         ) {
           if (__DEV__) {
-            console.log('ℹ️ No account found for email:', email);
+            debugLog('ℹ️ No account found for email:', email);
           }
           return {exists: false};
         }
 
         // For other errors, assume account doesn't exist
         if (__DEV__) {
-          console.log(
+          debugLog(
             'ℹ️ Assuming no account exists due to error:',
             error.message,
           );
@@ -477,7 +478,7 @@ export const authHelpers = {
 
       // If no error (which shouldn't happen with dummy password), assume exists
       if (__DEV__) {
-        console.log(
+        debugLog(
           '⚠️ Unexpected success with dummy password - assuming account exists',
         );
       }
@@ -538,7 +539,7 @@ export const authHelpers = {
 
   isAuthenticated: async (): Promise<boolean | AuthenticationResult> => {
     if (__DEV__) {
-      console.log('🔍 Starting authentication check...');
+      debugLog('🔍 Starting authentication check...');
     }
     try {
       const result = await authHelpers.getCurrentUser();
@@ -549,7 +550,7 @@ export const authHelpers = {
           errorMessage.includes('session_not_found')
         ) {
           if (__DEV__) {
-            console.log(
+            debugLog(
               'ℹ️ No active session found, attempting to refresh session...',
             );
           }
@@ -558,12 +559,12 @@ export const authHelpers = {
           const refreshResult = await authHelpers.refreshSession();
           if (refreshResult.success) {
             if (__DEV__) {
-              console.log('✅ Session refreshed successfully');
+              debugLog('✅ Session refreshed successfully');
             }
             return true;
           } else {
             if (__DEV__) {
-              console.log('ℹ️ Session refresh failed - user needs to re-login');
+              debugLog('ℹ️ Session refresh failed - user needs to re-login');
             }
             return {
               authenticated: false,
@@ -609,7 +610,7 @@ export const authHelpers = {
   refreshSession: async (): Promise<SessionRefreshResult> => {
     try {
       if (__DEV__) {
-        console.log('🔄 Attempting to refresh session...');
+        debugLog('🔄 Attempting to refresh session...');
       }
       const {data, error} = await supabase.auth.refreshSession();
 
@@ -623,7 +624,7 @@ export const authHelpers = {
 
       if (data?.session) {
         if (__DEV__) {
-          console.log('✅ Session refreshed successfully');
+          debugLog('✅ Session refreshed successfully');
         }
         return {
           success: true,
@@ -631,7 +632,7 @@ export const authHelpers = {
         };
       } else {
         if (__DEV__) {
-          console.log('❌ No session returned from refresh');
+          debugLog('❌ No session returned from refresh');
         }
         return {
           success: false,
@@ -650,7 +651,7 @@ export const authHelpers = {
   // Enhanced method to check auth state with recovery options
   checkAuthWithRecovery: async (): Promise<AuthenticationResult> => {
     if (__DEV__) {
-      console.log('🔍 Starting enhanced authentication check...');
+      debugLog('🔍 Starting enhanced authentication check...');
     }
     try {
       // First, try to get the current user
@@ -665,7 +666,7 @@ export const authHelpers = {
           errorMessage.includes('JWT expired')
         ) {
           if (__DEV__) {
-            console.log('⚠️ Session issue detected, attempting recovery...');
+            debugLog('⚠️ Session issue detected, attempting recovery...');
           }
 
           // Try to refresh the session
@@ -673,7 +674,7 @@ export const authHelpers = {
 
           if (refreshResult.success) {
             if (__DEV__) {
-              console.log('✅ Session recovered successfully');
+              debugLog('✅ Session recovered successfully');
             }
             return {
               authenticated: true,
@@ -682,7 +683,7 @@ export const authHelpers = {
             };
           } else {
             if (__DEV__) {
-              console.log('❌ Session recovery failed');
+              debugLog('❌ Session recovery failed');
             }
             return {
               authenticated: false,
@@ -722,11 +723,11 @@ export const authHelpers = {
   clearInvalidSession: async (): Promise<SessionClearResult> => {
     try {
       if (__DEV__) {
-        console.log('🧹 Clearing invalid session...');
+        debugLog('🧹 Clearing invalid session...');
       }
       await supabase.auth.signOut();
       if (__DEV__) {
-        console.log('✅ Invalid session cleared');
+        debugLog('✅ Invalid session cleared');
       }
       return {success: true};
     } catch (error) {
@@ -806,7 +807,7 @@ export const handleAuthenticationWithRecovery = async (options?: {
   const {clearInvalidSession = true} = options || {};
 
   if (__DEV__) {
-    console.log('🔐 Starting comprehensive authentication check...');
+    debugLog('🔐 Starting comprehensive authentication check...');
   }
 
   try {
@@ -824,7 +825,7 @@ export const handleAuthenticationWithRecovery = async (options?: {
     if (authResult.needsReauth) {
       if (clearInvalidSession) {
         if (__DEV__) {
-          console.log(
+          debugLog(
             '🧹 Clearing invalid session before recommending re-login...',
           );
         }

@@ -27,6 +27,7 @@ import type {RootStackParamList} from '../navigation/AppNavigator';
 import {journalEntriesService} from '../services/journalEntries';
 import {Path} from 'react-native-svg';
 import Svg from 'react-native-svg';
+import {debugLog} from '../utils/logger';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Analysis'>;
 
@@ -140,7 +141,7 @@ const AnalysisScreen: React.FC<Props> = ({route, navigation}) => {
           );
           // If no stored data exists, generate fresh analysis even for existing entries
           if (__DEV__) {
-            console.log(
+            debugLog(
               'No stored analysis data found, generating fresh analysis...',
             );
           }

@@ -2,6 +2,7 @@ import axios from 'axios';
 import {storageService, type OnboardingData} from './storage';
 import {OPENAI_API_KEY, DEEPSEEK_API_KEY} from '@env';
 import {safeAwait} from '../utils/safeAwait';
+import {debugLog} from '../utils/logger';
 
 interface AIProviderConfig {
   baseURL: string;
@@ -732,7 +733,7 @@ Return only the JSON object:`;
 
   const config = getAIConfig();
   if (__DEV__) {
-    console.log('🔍 Analyzing journal entry with config:', {
+    debugLog('🔍 Analyzing journal entry with config:', {
       provider: AI_CONFIG.provider,
       model: config.model,
       entryLength: entry.length,
