@@ -81,13 +81,16 @@ const OnboardingGoalsScreen: React.FC<Props> = ({navigation}) => {
     if (canContinue) {
       // Save selected goals to AsyncStorage
       const [error] = await safeAwait(
-        AsyncStorage.setItem('@journal_onboarding_goals', JSON.stringify(selectedGoals))
+        AsyncStorage.setItem(
+          '@journal_onboarding_goals',
+          JSON.stringify(selectedGoals),
+        ),
       );
-      
+
       if (error) {
         console.error('Error saving goals:', error);
       }
-      
+
       navigation.navigate('OnboardingChallenges');
     }
   };

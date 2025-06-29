@@ -1,7 +1,8 @@
 import axios from 'axios';
-import {getOnboardingData, OnboardingData} from './onboarding';
+import {storageService, type OnboardingData} from './storage';
 import {OPENAI_API_KEY, DEEPSEEK_API_KEY} from '@env';
 import {safeAwait} from '../utils/safeAwait';
+import {debugLog} from '../utils/logger';
 
 interface AIProviderConfig {
   baseURL: string;
@@ -13,7 +14,7 @@ interface AIProviderConfig {
 }
 
 const AI_CONFIG = {
-  provider: 'deepseek' as 'openai' | 'deepseek',
+  provider: 'openai' as 'openai' | 'deepseek',
   openai: {
     baseURL: 'https://api.openai.com/v1/chat/completions',
     model: 'gpt-4o',
@@ -24,7 +25,7 @@ const AI_CONFIG = {
   },
   deepseek: {
     baseURL: 'https://api.deepseek.com/v1/chat/completions',
-    model: 'deepseek-chat',
+    model: 'deepseek-reasoner',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
@@ -34,6 +35,29 @@ const AI_CONFIG = {
 
 const getAIConfig = (): AIProviderConfig => {
   return AI_CONFIG[AI_CONFIG.provider];
+};
+
+// Helper function to switch AI provider
+export const switchAIProvider = (provider: 'openai' | 'deepseek'): void => {
+  AI_CONFIG.provider = provider;
+};
+
+// Helper function to get current provider info
+export const getCurrentAIProvider = (): {
+  provider: string;
+  model: string;
+  available: boolean;
+} => {
+  const config = getAIConfig();
+  const hasApiKey =
+    config.headers.Authorization !== 'Bearer undefined' &&
+    config.headers.Authorization !== 'Bearer null';
+
+  return {
+    provider: AI_CONFIG.provider,
+    model: config.model,
+    available: hasApiKey,
+  };
 };
 
 const buildPersonalizedContext = (
@@ -161,10 +185,141 @@ const generatePersonalizedGuidance = (
   return guidance;
 };
 
+// Helper function to safely extract content from AI response
+const extractContentFromResponse = (response: any): string | null => {
+  try {
+    // Check if response exists at all
+    if (!response) {
+      console.error('❌ No response object provided');
+      return null;
+    }
+
+    // Get current provider info for response handling
+    const currentProvider = AI_CONFIG.provider;
+
+    // Check if response has data property
+    if (!response.data) {
+      console.error('❌ No data property in response');
+      return null;
+    }
+
+    const data = response.data;
+
+    // Standard format for both OpenAI and DeepSeek: choices[0].message.content
+    if (
+      data.choices &&
+      Array.isArray(data.choices) &&
+      data.choices.length > 0
+    ) {
+      const choice = data.choices[0];
+
+      if (choice.message) {
+        // Handle based on provider
+        if (currentProvider === 'openai') {
+          // OpenAI: Standard content field
+          if (
+            choice.message.content &&
+            typeof choice.message.content === 'string'
+          ) {
+            return choice.message.content.trim();
+          }
+        } else if (currentProvider === 'deepseek') {
+          // DeepSeek reasoner: content is the final answer, reasoning_content is the thinking process
+          // Priority: content (final answer) > reasoning_content (if content is empty)
+
+          if (
+            choice.message.content &&
+            typeof choice.message.content === 'string' &&
+            choice.message.content.trim() !== ''
+          ) {
+            return choice.message.content.trim();
+          }
+
+          // DeepSeek reasoner fallback: if content is empty, try reasoning_content
+          // This happens when the model puts the JSON in reasoning_content instead of content
+          if (
+            choice.message.reasoning_content &&
+            typeof choice.message.reasoning_content === 'string'
+          ) {
+            // Check if reasoning_content looks like it contains JSON
+            const reasoningContent = choice.message.reasoning_content.trim();
+            if (
+              reasoningContent.includes('{') &&
+              reasoningContent.includes('}')
+            ) {
+              return reasoningContent;
+            } else {
+              return reasoningContent;
+            }
+          }
+        }
+
+        // Fallback: try standard content field regardless of provider
+        if (
+          choice.message.content &&
+          typeof choice.message.content === 'string'
+        ) {
+          return choice.message.content.trim();
+        }
+      }
+
+      // Alternative formats (some APIs use these)
+      if (typeof choice.text === 'string') {
+        return choice.text.trim();
+      }
+
+      if (typeof choice.content === 'string') {
+        return choice.content.trim();
+      }
+    }
+
+    // Alternative response formats (for other APIs)
+    if (typeof data.content === 'string') {
+      return data.content.trim();
+    }
+
+    if (data.message && typeof data.message.content === 'string') {
+      return data.message.content.trim();
+    }
+
+    if (typeof data.text === 'string') {
+      return data.text.trim();
+    }
+
+    if (data.response && typeof data.response === 'string') {
+      return data.response.trim();
+    }
+
+    if (data.output && typeof data.output === 'string') {
+      return data.output.trim();
+    }
+
+    // Nested structures
+    if (
+      data.result &&
+      data.result.content &&
+      typeof data.result.content === 'string'
+    ) {
+      return data.result.content.trim();
+    }
+
+    console.error(
+      '❌ Could not find content in any expected response structure',
+    );
+    return null;
+  } catch (error) {
+    console.error(
+      '❌ Exception while extracting content from response:',
+      error,
+    );
+    return null;
+  }
+};
+
 export async function analyseJournalEntry(entry: string): Promise<string> {
   // Load onboarding data to personalize the response
   const [onboardingError, onboardingData] = await safeAwait(
-    getOnboardingData(),
+    storageService.getOnboardingData(),
   );
 
   if (onboardingError) {
@@ -174,10 +329,12 @@ export async function analyseJournalEntry(entry: string): Promise<string> {
   const personalContext = buildPersonalizedContext(onboardingData || null);
   const personalGuidance = generatePersonalizedGuidance(onboardingData || null);
 
-  const prompt = `You are a calm, thoughtful psychiatrist. When I share a journal entry, reply in just 1–2 short lines:  
-  – Acknowledge my feeling.  
-  – Reflect back what you heard.  
-  – End with one open question to help me dig deeper.  
+  const prompt = `You are a calm and thoughtful psychiatrist helping me reflect on my journal entry. Keep your reply to 1–2 short sentences. Be warm, respectful, and clear.
+  When I share something, respond with:  
+  – A short acknowledgment of how I might be feeling.  
+  – A brief reflection that shows you understand what I said.  
+  – One gentle, open-ended question to help me explore the topic more deeply.
+  
   
   ${personalContext}${personalGuidance}
   
@@ -185,6 +342,8 @@ export async function analyseJournalEntry(entry: string): Promise<string> {
   "${entry}"`;
 
   const config = getAIConfig();
+  const currentProvider = AI_CONFIG.provider;
+
   const [error, res] = await safeAwait(
     axios.post(
       config.baseURL,
@@ -200,11 +359,23 @@ export async function analyseJournalEntry(entry: string): Promise<string> {
   );
 
   if (error) {
-    console.error('Error analyzing journal entry:', error);
+    console.error(
+      `❌ Error analyzing journal entry with ${currentProvider}:`,
+      error,
+    );
     return "I'm here to listen and support you. Sometimes it helps to simply acknowledge what you're feeling right now. What stands out most to you about this moment?";
   }
 
-  return res.data.choices[0].message.content.trim();
+  const content = extractContentFromResponse(res);
+
+  if (!content) {
+    console.error(
+      `❌ Failed to extract content from ${currentProvider} response`,
+    );
+    return "I'm here to listen and support you. Sometimes it helps to simply acknowledge what you're feeling right now. What stands out most to you about this moment?";
+  }
+
+  return content;
 }
 
 export async function generateTitleFromEntry(entry: string): Promise<string> {
@@ -214,6 +385,8 @@ export async function generateTitleFromEntry(entry: string): Promise<string> {
   "${entry}"`;
 
   const config = getAIConfig();
+  const currentProvider = AI_CONFIG.provider;
+
   const [error, res] = await safeAwait(
     axios.post(
       config.baseURL,
@@ -229,20 +402,30 @@ export async function generateTitleFromEntry(entry: string): Promise<string> {
   );
 
   if (error) {
-    console.error('Error generating title:', error);
+    console.error(`❌ Error generating title with ${currentProvider}:`, error);
     // Return a fallback title based on current date
     const now = new Date();
     return `Journal Entry - ${now.toLocaleDateString()}`;
   }
 
-  return res.data.choices[0].message.content.trim();
+  const content = extractContentFromResponse(res);
+
+  if (!content) {
+    console.error(
+      `❌ Failed to extract title from ${currentProvider} response`,
+    );
+    const now = new Date();
+    return `Journal Entry - ${now.toLocaleDateString()}`;
+  }
+
+  return content;
 }
 
 export async function generateAlternativePerspective(
   entry: string,
 ): Promise<string> {
   const [onboardingError, onboardingData] = await safeAwait(
-    getOnboardingData(),
+    storageService.getOnboardingData(),
   );
 
   if (onboardingError) {
@@ -274,6 +457,8 @@ Journal entry:
 Provide only the alternative perspective, no other text.`;
 
   const config = getAIConfig();
+  const currentProvider = AI_CONFIG.provider;
+
   const [error, res] = await safeAwait(
     axios.post(
       config.baseURL,
@@ -289,11 +474,23 @@ Provide only the alternative perspective, no other text.`;
   );
 
   if (error) {
-    console.error('Error generating alternative perspective:', error);
+    console.error(
+      `❌ Error generating alternative perspective with ${currentProvider}:`,
+      error,
+    );
     return 'Every experience, even difficult ones, offers opportunities for growth and self-understanding. Your willingness to reflect and seek different perspectives shows remarkable strength and wisdom. Consider how this moment might be teaching you something valuable about yourself or your resilience.';
   }
 
-  return res.data.choices[0].message.content.trim();
+  const content = extractContentFromResponse(res);
+
+  if (!content) {
+    console.error(
+      `❌ Failed to extract alternative perspective from ${currentProvider} response`,
+    );
+    return 'Every experience, even difficult ones, offers opportunities for growth and self-understanding. Your willingness to reflect and seek different perspectives shows remarkable strength and wisdom. Consider how this moment might be teaching you something valuable about yourself or your resilience.';
+  }
+
+  return content;
 }
 
 export interface AnalysisData {
@@ -330,71 +527,68 @@ const extractJsonFromResponse = (content: string): string => {
   return cleanedContent.trim();
 };
 
-const getEmotionColor = (emotionName: string): string => {
-  const emotion = emotionName.toLowerCase();
-  
-  // Positive emotions - warm, bright colors
-  if (emotion.includes('happy') || emotion.includes('joy') || emotion.includes('elated')) {
-    return '#F59E0B'; // Bright amber
-  }
-  if (emotion.includes('grateful') || emotion.includes('thankful') || emotion.includes('appreciative')) {
-    return '#10B981'; // Emerald green
-  }
-  if (emotion.includes('hopeful') || emotion.includes('optimistic') || emotion.includes('confident')) {
-    return '#3B82F6'; // Blue
-  }
-  if (emotion.includes('excited') || emotion.includes('enthusiastic') || emotion.includes('energetic')) {
-    return '#F97316'; // Orange
-  }
-  if (emotion.includes('peaceful') || emotion.includes('calm') || emotion.includes('serene')) {
-    return '#06B6D4'; // Cyan
-  }
-  if (emotion.includes('content') || emotion.includes('satisfied') || emotion.includes('fulfilled')) {
-    return '#8B5CF6'; // Purple
-  }
-  if (emotion.includes('love') || emotion.includes('affection') || emotion.includes('caring')) {
-    return '#EC4899'; // Pink
-  }
-  
-  // Neutral/contemplative emotions - muted colors
-  if (emotion.includes('contemplative') || emotion.includes('reflective') || emotion.includes('thoughtful')) {
-    return '#64748B'; // Slate
-  }
-  if (emotion.includes('curious') || emotion.includes('wondering') || emotion.includes('questioning')) {
-    return '#7C3AED'; // Violet
-  }
-  if (emotion.includes('determined') || emotion.includes('focused') || emotion.includes('motivated')) {
-    return '#059669'; // Green
-  }
-  if (emotion.includes('nostalgic') || emotion.includes('reminiscent') || emotion.includes('wistful')) {
-    return '#D97706'; // Amber
-  }
-  
-  // Challenging emotions - cooler, more muted tones
-  if (emotion.includes('sad') || emotion.includes('melancholy') || emotion.includes('down')) {
-    return '#6366F1'; // Indigo
-  }
-  if (emotion.includes('anxious') || emotion.includes('worried') || emotion.includes('nervous')) {
-    return '#EF4444'; // Red
-  }
-  if (emotion.includes('frustrated') || emotion.includes('annoyed') || emotion.includes('irritated')) {
-    return '#DC2626'; // Dark red
-  }
-  if (emotion.includes('uncertain') || emotion.includes('confused') || emotion.includes('unsure')) {
-    return '#F59E0B'; // Amber
-  }
-  if (emotion.includes('overwhelmed') || emotion.includes('stressed') || emotion.includes('pressured')) {
-    return '#7C2D12'; // Brown
-  }
-  if (emotion.includes('lonely') || emotion.includes('isolated') || emotion.includes('disconnected')) {
-    return '#475569'; // Dark slate
-  }
-  if (emotion.includes('tired') || emotion.includes('exhausted') || emotion.includes('drained')) {
-    return '#6B7280'; // Gray
-  }
-  
-  // Default fallback color
-  return '#64748B'; // Slate
+const emotionColorMap: Record<string, string> = {
+  happy: '#F59E0B',
+  joy: '#F59E0B',
+  elated: '#F59E0B',
+  grateful: '#10B981',
+  thankful: '#10B981',
+  appreciative: '#10B981',
+  hopeful: '#3B82F6',
+  optimistic: '#3B82F6',
+  confident: '#3B82F6',
+  excited: '#F97316',
+  enthusiastic: '#F97316',
+  energetic: '#F97316',
+  peaceful: '#06B6D4',
+  calm: '#06B6D4',
+  serene: '#06B6D4',
+  content: '#8B5CF6',
+  satisfied: '#8B5CF6',
+  fulfilled: '#8B5CF6',
+  love: '#EC4899',
+  affection: '#EC4899',
+  caring: '#EC4899',
+  contemplative: '#64748B',
+  reflective: '#64748B',
+  thoughtful: '#64748B',
+  curious: '#7C3AED',
+  wondering: '#7C3AED',
+  questioning: '#7C3AED',
+  determined: '#059669',
+  focused: '#059669',
+  motivated: '#059669',
+  nostalgic: '#D97706',
+  reminiscent: '#D97706',
+  wistful: '#D97706',
+  sad: '#6366F1',
+  melancholy: '#6366F1',
+  down: '#6366F1',
+  anxious: '#EF4444',
+  worried: '#EF4444',
+  nervous: '#EF4444',
+  frustrated: '#DC2626',
+  annoyed: '#DC2626',
+  irritated: '#DC2626',
+  uncertain: '#F59E0B',
+  confused: '#F59E0B',
+  unsure: '#F59E0B',
+  overwhelmed: '#7C2D12',
+  stressed: '#7C2D12',
+  pressured: '#7C2D12',
+  lonely: '#475569',
+  isolated: '#475569',
+  disconnected: '#475569',
+  tired: '#6B7280',
+  exhausted: '#6B7280',
+  drained: '#6B7280',
+};
+
+const getEmotionColor = (name: string): string => {
+  const key = Object.keys(emotionColorMap).find(k =>
+    name.toLowerCase().includes(k),
+  );
+  return key ? emotionColorMap[key] : '#64748B';
 };
 
 const validateAndNormalizeAnalysisData = (data: any): AnalysisData => {
@@ -418,7 +612,9 @@ const validateAndNormalizeAnalysisData = (data: any): AnalysisData => {
     ? data.emotions.map((emotion: any) => ({
         name: String(emotion.name || 'Unknown'),
         percentage: Math.max(0, Number(emotion.percentage) || 0),
-        color: String(emotion.color || getEmotionColor(emotion.name || 'Unknown')),
+        color: String(
+          emotion.color || getEmotionColor(emotion.name || 'Unknown'),
+        ),
       }))
     : [];
 
@@ -480,11 +676,15 @@ export async function analyzeJournalEntryData(
     };
   }
 
-
-  const [onboardingError, onboardingData] = await safeAwait(getOnboardingData());
+  const [onboardingError, onboardingData] = await safeAwait(
+    storageService.getOnboardingData(),
+  );
 
   if (onboardingError) {
-    console.warn('Failed to load onboarding data for analysis:', onboardingError);
+    console.warn(
+      'Failed to load onboarding data for analysis:',
+      onboardingError,
+    );
   }
 
   const personalContext = buildPersonalizedContext(onboardingData || null);
@@ -511,6 +711,8 @@ export async function analyzeJournalEntryData(
 
 CRITICAL REQUIREMENTS:
 - Return ONLY valid JSON, no markdown, no explanations, no extra text
+- Do not include any reasoning or thinking process in your response
+- Put the JSON directly in your final answer, not in reasoning steps
 - Identify 2-4 main themes from: Work, Family, Health, Relationships, Self-Care, Growth, Stress, Goals, Creativity, etc.
 - Count represents theme importance (1-5 scale)
 - Each theme needs exactly: name, count, breakdown (string), insights (array of strings), emoji (single relevant emoji)
@@ -530,6 +732,14 @@ Journal entry: "${entry.replace(/"/g, '\\"').replace(/\n/g, '\\n')}"
 Return only the JSON object:`;
 
   const config = getAIConfig();
+  if (__DEV__) {
+    debugLog('🔍 Analyzing journal entry with config:', {
+      provider: AI_CONFIG.provider,
+      model: config.model,
+      entryLength: entry.length,
+    });
+  }
+
   const [error, res] = await safeAwait(
     axios.post(
       config.baseURL,
@@ -538,7 +748,7 @@ Return only the JSON object:`;
         stream: false,
         messages: [{role: 'user', content: prompt}],
         temperature: 0.3, // Lower temperature for more consistent JSON output
-        max_tokens: 1000, // Limit response length to encourage conciseness
+        max_tokens: 2000, // Increased from 1000 to ensure complete responses
       },
       {
         headers: config.headers,
@@ -548,37 +758,103 @@ Return only the JSON object:`;
 
   if (error) {
     console.error(
-      'Error analyzing journal entry data - API call failed:',
+      '❌ Error analyzing journal entry data - API call failed:',
       error,
     );
     return getFallbackAnalysisData();
   }
 
-  if (!res?.data?.choices?.[0]?.message?.content) {
-    console.error('Invalid API response structure:', res?.data);
+  // Provider-specific response handling
+  const currentProvider = AI_CONFIG.provider;
+
+  if (res.data?.choices?.[0]?.message) {
+    const message = res.data.choices[0].message;
+    const choice = res.data.choices[0];
+
+    if (currentProvider === 'deepseek') {
+      // Check if DeepSeek response was truncated
+      if (choice.finish_reason === 'length') {
+        console.warn('⚠️ DeepSeek response was truncated due to token limit');
+
+        // If content is empty but reasoning_content exists, the JSON might be in reasoning_content
+        if (
+          (!message.content || message.content.trim() === '') &&
+          message.reasoning_content
+        ) {
+          // Try to find a complete JSON object in reasoning_content
+          const reasoningContent = message.reasoning_content;
+          const jsonMatch = reasoningContent.match(/\{[\s\S]*\}/);
+
+          if (jsonMatch) {
+            try {
+              // Try to parse it to see if it's valid
+              JSON.parse(jsonMatch[0]);
+              // We'll let the normal extraction process handle this
+            } catch (parseError) {
+              console.warn(
+                '⚠️ JSON in DeepSeek reasoning_content is malformed, using fallback',
+              );
+              return getFallbackAnalysisData();
+            }
+          } else {
+            console.warn(
+              '⚠️ No JSON structure found in truncated DeepSeek reasoning_content, using fallback',
+            );
+            return getFallbackAnalysisData();
+          }
+        }
+      }
+    } else if (currentProvider === 'openai') {
+      // Check if OpenAI response was truncated
+      if (choice.finish_reason === 'length') {
+        console.warn('⚠️ OpenAI response was truncated due to token limit');
+      }
+
+      // OpenAI doesn't have reasoning_content, so if content is empty, it's an error
+      if (!message.content || message.content.trim() === '') {
+        console.error('❌ OpenAI response has empty content field');
+        return getFallbackAnalysisData();
+      }
+    }
+  }
+
+  const rawContent = extractContentFromResponse(res);
+
+  if (!rawContent) {
+    console.error(
+      `❌ Failed to extract content from ${currentProvider} analysis response`,
+    );
     return getFallbackAnalysisData();
   }
 
   try {
-    const rawContent = res.data.choices[0].message.content;
-    console.log('Raw AI response:', rawContent); // Debug logging
-
     const cleanedContent = extractJsonFromResponse(rawContent);
-    console.log('Cleaned content for parsing:', cleanedContent); // Debug logging
+
+    // Check if the JSON looks complete
+    if (!cleanedContent.includes('"perspective"')) {
+      console.warn('⚠️ JSON appears incomplete (missing perspective field)');
+      return getFallbackAnalysisData();
+    }
 
     const parsedData = JSON.parse(cleanedContent);
 
     // Validate and normalize the data
     const analysisData = validateAndNormalizeAnalysisData(parsedData);
 
-    console.log(
-      'Successfully parsed and validated analysis data:',
-      analysisData,
-    );
     return analysisData;
   } catch (parseError) {
-    console.error('Error parsing AI analysis response:', parseError);
-    console.error('Raw response was:', res.data.choices[0].message.content);
+    console.error(
+      `❌ Error parsing ${currentProvider} analysis response:`,
+      parseError,
+    );
+
+    // Check if this was a truncation issue
+    if (res.data?.choices?.[0]?.finish_reason === 'length') {
+      console.error(
+        `💔 ${currentProvider} response was truncated, this likely caused the JSON parsing error`,
+      );
+    }
+
     return getFallbackAnalysisData();
   }
 }
@@ -589,46 +865,50 @@ const getFallbackAnalysisData = (): AnalysisData => {
       {
         name: 'Self-Reflection',
         count: 4,
-        breakdown: 'Your entry shows deep introspection and willingness to examine your thoughts and feelings.',
+        breakdown:
+          'Your entry shows deep introspection and willingness to examine your thoughts and feelings.',
         insights: [
           'You demonstrate strong self-awareness',
           "You're actively processing your experiences",
           'You show courage in facing difficult emotions',
         ],
-        emoji: '🤔'
+        emoji: '🤔',
       },
       {
         name: 'Daily Life',
         count: 3,
-        breakdown: "You're navigating the complexities of everyday experiences and finding meaning in routine moments.",
+        breakdown:
+          "You're navigating the complexities of everyday experiences and finding meaning in routine moments.",
         insights: [
           'You notice details in your daily experiences',
           'You seek meaning in ordinary moments',
           "You're building awareness of life patterns",
         ],
-        emoji: '📅'
+        emoji: '📅',
       },
       {
         name: 'Emotions',
         count: 3,
-        breakdown: 'Your emotional landscape is rich and varied, showing both vulnerability and strength.',
+        breakdown:
+          'Your emotional landscape is rich and varied, showing both vulnerability and strength.',
         insights: [
           'You acknowledge your feelings honestly',
           "You're developing emotional intelligence",
           'You show resilience in processing emotions',
         ],
-        emoji: '💭'
+        emoji: '💭',
       },
       {
         name: 'Relationships',
         count: 2,
-        breakdown: 'Your connections with others play an important role in your personal growth and well-being.',
+        breakdown:
+          'Your connections with others play an important role in your personal growth and well-being.',
         insights: [
           'You value meaningful connections',
           "You're learning about interpersonal dynamics",
           'You seek understanding in your relationships',
         ],
-        emoji: '❤️'
+        emoji: '❤️',
       },
     ],
     emotions: [
@@ -640,4 +920,89 @@ const getFallbackAnalysisData = (): AnalysisData => {
     perspective:
       'Your willingness to write and reflect shows incredible self-awareness and courage.',
   };
+};
+
+// Test function to verify AI API connectivity
+export const testAIConnection = async (): Promise<{
+  success: boolean;
+  message: string;
+  details?: any;
+}> => {
+  try {
+    const config = getAIConfig();
+
+    const testPayload = {
+      model: config.model,
+      messages: [
+        {
+          role: 'user',
+          content:
+            'Hello, this is a test message. Please respond with "Connection successful".',
+        },
+      ],
+      max_tokens: 50,
+      temperature: 0.1,
+    };
+
+    const [error, res] = await safeAwait(
+      axios.post(config.baseURL, testPayload, {
+        headers: config.headers,
+        timeout: 15000, // 15 second timeout
+      }),
+    );
+
+    if (error) {
+      console.error('❌ AI API connection test failed:', error);
+      const errorDetails = {
+        message: error.message,
+        status: (error as any).response?.status,
+        statusText: (error as any).response?.statusText,
+        data: (error as any).response?.data,
+      };
+      return {
+        success: false,
+        message: `Connection failed: ${error.message || 'Unknown error'}`,
+        details: errorDetails,
+      };
+    }
+
+    // Try to extract content using our improved function
+    const content = extractContentFromResponse(res);
+
+    if (content) {
+      return {
+        success: true,
+        message: `Connection successful. Response: ${content.substring(
+          0,
+          100,
+        )}${content.length > 100 ? '...' : ''}`,
+        details: {
+          provider: AI_CONFIG.provider,
+          model: config.model,
+          responseLength: content.length,
+          fullResponse: content,
+        },
+      };
+    } else {
+      console.error(
+        '❌ AI API returned response but content extraction failed',
+      );
+      return {
+        success: false,
+        message: 'Connection established but response format is invalid',
+        details: {
+          provider: AI_CONFIG.provider,
+          model: config.model,
+          rawResponse: res.data,
+        },
+      };
+    }
+  } catch (error) {
+    console.error('❌ AI API connection test exception:', error);
+    return {
+      success: false,
+      message: `Connection test failed: ${error}`,
+      details: {exception: String(error)},
+    };
+  }
 };

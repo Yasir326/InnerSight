@@ -14,14 +14,14 @@ import {
   Alert,
   TouchableOpacity,
 } from 'react-native';
-import {analyseJournalEntry} from '../services/ai';
+import {analyseJournalEntry, generateTitleFromEntry} from '../services/ai';
 import {safeAwait} from '../utils/safeAwait';
 import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {baseFontFamily} from '../utils/platform';
 import type {RootStackParamList} from '../navigation/AppNavigator';
 import {
-  saveJournalEntry,
-  generateTitleFromContent,
+  journalEntriesService,
 } from '../services/journalEntries';
 import Svg, {Path} from 'react-native-svg';
 
@@ -141,7 +141,7 @@ export default function EntryScreen() {
 
     // Generate a title from the first entry
     const [titleError, title] = await safeAwait(
-      generateTitleFromContent(
+      generateTitleFromEntry(
         conversation[0].type === 'user' ? conversation[0].text : fullText,
       ),
     );
@@ -156,7 +156,7 @@ export default function EntryScreen() {
 
       // Save the journal entry
       const [error, savedEntry] = await safeAwait(
-        saveJournalEntry({
+        journalEntriesService.saveEntry({
           title: fallbackTitle,
           content: fullText,
           conversationData: conversation,
@@ -173,13 +173,13 @@ export default function EntryScreen() {
         // Navigate to analysis screen with entry ID
         navigation.navigate('Analysis', {
           entryText: fullText,
-          entryId: savedEntry.id,
+          entryId: savedEntry?.id || '',
         });
       }
     } else {
       // Save the journal entry
       const [error, savedEntry] = await safeAwait(
-        saveJournalEntry({
+        journalEntriesService.saveEntry({
           title: title || 'Journal Entry',
           content: fullText,
           conversationData: conversation,
@@ -196,7 +196,7 @@ export default function EntryScreen() {
         // Navigate to analysis screen with entry ID
         navigation.navigate('Analysis', {
           entryText: fullText,
-          entryId: savedEntry.id,
+          entryId: savedEntry?.id || '',
         });
       }
     }
@@ -332,7 +332,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     lineHeight: 26,
     color: '#000000',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
   },
   aiContainer: {
     flexDirection: 'row',
@@ -349,7 +349,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     lineHeight: 26,
     color: '#007AFF',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
     flex: 1,
   },
   loadingContainer: {
@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
     color: '#000000',
     padding: 0,
     textAlignVertical: 'top',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'normal',
+    fontFamily: baseFontFamily,
     minHeight: 100,
   },
   spacer: {

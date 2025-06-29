@@ -1,78 +1,151 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { safeAwait } from '../utils/safeAwait';
+import { storageService } from './storage';
+import { getCurrentUserId, supabase } from '../lib/supabase';
+import { OnboardingData } from '../types/types';
 
-export interface OnboardingData {
-  userName: string;
-  goals: string[];
-  challenges: string[];
-  reflections: {
-    current_state: string;
-    ideal_self: string;
-    biggest_obstacle: string;
-  };
-  completedAt: string;
-}
-
+// Legacy AsyncStorage keys for backward compatibility
 const ONBOARDING_KEY = '@journal_onboarding_data';
 const ONBOARDING_COMPLETE_KEY = '@journal_onboarding_complete';
+const USER_NAME_KEY = '@journal_user_name';
+const ONBOARDING_STORAGE_KEY = '@journal_onboarding_storage_data';
 
-export const saveOnboardingData = async (
-  data: OnboardingData,
-): Promise<void> => {
-  const [dataError] = await safeAwait(AsyncStorage.setItem(ONBOARDING_KEY, JSON.stringify(data)));
-  if (dataError) {
-    console.error('Error saving onboarding data:', dataError);
-    throw dataError;
-  }
+export const saveOnboardingData = async (data: OnboardingData): Promise<void> => {
+  try {
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      throw new Error('User not authenticated');
+    }
 
-  const [completeError] = await safeAwait(AsyncStorage.setItem(ONBOARDING_COMPLETE_KEY, 'true'));
-  if (completeError) {
-    console.error('Error saving onboarding completion status:', completeError);
-    throw completeError;
+    const supabaseData = {
+      user_id: userId,
+      goals: data.goals,
+      challenges: data.challenges,
+      reflections: data.reflections,
+      is_complete: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    const {error} = await supabase
+      .from('onboarding_data')
+      .upsert(supabaseData, {
+        onConflict: 'user_id',
+      });
+
+    if (error) {
+      console.error('❌ Error saving onboarding data to Supabase:', error);
+      throw new Error('Failed to save onboarding data');
+    }
+
+    // Also save to AsyncStorage as backup
+    await AsyncStorage.setItem(
+      ONBOARDING_STORAGE_KEY,
+      JSON.stringify(data),
+    );
+  } catch (error) {
+    console.error('❌ Error in saveOnboardingData:', error);
+    throw error;
   }
 };
 
 export const getOnboardingData = async (): Promise<OnboardingData | null> => {
-  const [error, data] = await safeAwait(AsyncStorage.getItem(ONBOARDING_KEY));
-  if (error) {
+  try {
+    // Try to get data from Supabase first
+    const supabaseData = await storageService.getOnboardingData();
+    const profile = await storageService.getUserProfile();
+    
+    if (supabaseData) {
+      return {
+        userName: profile?.name || '',
+        goals: supabaseData.goals,
+        challenges: supabaseData.challenges,
+        reflections: supabaseData.reflections,
+        completedAt: new Date().toISOString(), // We don't store this separately anymore
+      };
+    }
+
+    // Fallback to AsyncStorage for backward compatibility
+    const [error, data] = await safeAwait(AsyncStorage.getItem(ONBOARDING_KEY));
+    if (error) {
+      console.error('Error getting onboarding data from AsyncStorage:', error);
+      return null;
+    }
+    return data ? JSON.parse(data) : null;
+  } catch (error) {
     console.error('Error getting onboarding data:', error);
     return null;
   }
-  return data ? JSON.parse(data) : null;
 };
 
 export const isOnboardingComplete = async (): Promise<boolean> => {
-  const [error, complete] = await safeAwait(AsyncStorage.getItem(ONBOARDING_COMPLETE_KEY));
-  if (error) {
-    console.error('Error checking onboarding status:', error);
+  try {
+    // Check Supabase first
+    const isComplete = await storageService.isOnboardingComplete();
+    if (isComplete) {
+      return true;
+    }
+
+    // Fallback to AsyncStorage for backward compatibility
+    const [error, complete] = await safeAwait(AsyncStorage.getItem(ONBOARDING_COMPLETE_KEY));
+    if (error) {
+      console.error('Error checking onboarding status from AsyncStorage:', error);
+      return false;
+    }
+    return complete === 'true';
+  } catch (error) {
+    console.error('Error checking onboarding completion:', error);
     return false;
   }
-  return complete === 'true';
 };
 
 export const resetOnboarding = async (): Promise<void> => {
-  const [dataError] = await safeAwait(AsyncStorage.removeItem(ONBOARDING_KEY));
-  if (dataError) {
-    console.error('Error removing onboarding data:', dataError);
-    throw dataError;
-  }
+  try {
+    // Clear AsyncStorage
+    await AsyncStorage.multiRemove([
+      ONBOARDING_STORAGE_KEY,
+      ONBOARDING_COMPLETE_KEY,
+      USER_NAME_KEY,
+    ]);
 
-  const [completeError] = await safeAwait(AsyncStorage.removeItem(ONBOARDING_COMPLETE_KEY));
-  if (completeError) {
-    console.error('Error removing onboarding completion status:', completeError);
-    throw completeError;
+    // Clear from Supabase
+    const userId = await getCurrentUserId();
+    if (userId) {
+      const {error} = await supabase
+        .from('onboarding_data')
+        .delete()
+        .eq('user_id', userId);
+
+      if (error) {
+        console.error('❌ Error deleting onboarding data from Supabase:', error);
+      }
+    }
+  } catch (error) {
+    console.error('❌ Error resetting onboarding:', error);
+    throw error;
   }
 };
 
-// Get user's name from storage
+// Get user's name from storage (updated to use Supabase)
 export const getUserName = async (): Promise<string | null> => {
-  const USER_NAME_KEY = '@journal_user_name';
-  const [error, name] = await safeAwait(AsyncStorage.getItem(USER_NAME_KEY));
-  if (error) {
+  try {
+    // Try to get from Supabase profile first
+    const profile = await storageService.getUserProfile();
+    if (profile?.name) {
+      return profile.name;
+    }
+
+    // Fallback to AsyncStorage for backward compatibility
+    const [error, name] = await safeAwait(AsyncStorage.getItem(USER_NAME_KEY));
+    if (error) {
+      console.error('Error getting user name from AsyncStorage:', error);
+      return null;
+    }
+    return name;
+  } catch (error) {
     console.error('Error getting user name:', error);
     return null;
   }
-  return name;
 };
 
 // Generate personalized prompts based on onboarding data

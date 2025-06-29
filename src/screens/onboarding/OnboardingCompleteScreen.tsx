@@ -12,7 +12,10 @@ import {
 } from 'react-native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../../navigation/AppNavigator';
-import {storage} from '../../services/storage';
+import {storageService} from '../../services/storage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {safeAwait} from '../../utils/safeAwait';
+import {debugLog} from '../../utils/logger';
 
 type Props = {
   navigation: NativeStackNavigationProp<
@@ -46,12 +49,78 @@ const OnboardingCompleteScreen: React.FC<Props> = ({navigation}) => {
         useNativeDriver: true,
       }),
     ]).start();
-  }, [fadeAnim, scaleAnim, slideAnim ]);
+  }, [fadeAnim, scaleAnim, slideAnim]);
 
   const handleStartJourney = async () => {
     try {
-      // Mark onboarding as complete
-      await storage.setOnboardingComplete();
+      if (__DEV__) {
+        debugLog('🚀 Starting onboarding completion process...');
+      }
+
+      // Collect all onboarding data from AsyncStorage
+      const [goalsError, goalsData] = await safeAwait(
+        AsyncStorage.getItem('@journal_onboarding_goals'),
+      );
+      const [challengesError, challengesData] = await safeAwait(
+        AsyncStorage.getItem('@journal_onboarding_challenges'),
+      );
+      const [reflectionsError, reflectionsData] = await safeAwait(
+        AsyncStorage.getItem('@journal_onboarding_reflections'),
+      );
+
+      if (goalsError || challengesError || reflectionsError) {
+        console.error('Error retrieving onboarding data:', {
+          goalsError,
+          challengesError,
+          reflectionsError,
+        });
+      }
+
+      // Parse the data with fallbacks
+      const goals = goalsData ? JSON.parse(goalsData) : [];
+      const challenges = challengesData ? JSON.parse(challengesData) : [];
+      const reflections = reflectionsData
+        ? JSON.parse(reflectionsData)
+        : {
+            current_state: '',
+            ideal_self: '',
+            biggest_obstacle: '',
+          };
+
+      if (__DEV__) {
+        debugLog('📊 Collected onboarding data:', {
+          goals,
+          challenges,
+          reflections,
+        });
+      }
+
+      // Save consolidated data to Supabase
+      const saveSuccess = await storageService.saveOnboardingData({
+        goals,
+        challenges,
+        reflections,
+      });
+
+      if (!saveSuccess) {
+        console.error('Failed to save onboarding data to Supabase');
+        // Continue anyway - we don't want to block the user
+      } else {
+        if (__DEV__) {
+          debugLog('✅ Onboarding data saved to Supabase successfully');
+        }
+      }
+
+      // Clean up AsyncStorage keys
+      await Promise.all([
+        AsyncStorage.removeItem('@journal_onboarding_goals'),
+        AsyncStorage.removeItem('@journal_onboarding_challenges'),
+        AsyncStorage.removeItem('@journal_onboarding_reflections'),
+      ]);
+
+      if (__DEV__) {
+        debugLog('🧹 Cleaned up temporary AsyncStorage data');
+      }
 
       // Navigate to home and reset navigation stack
       navigation.reset({
